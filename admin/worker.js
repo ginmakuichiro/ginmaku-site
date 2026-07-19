@@ -22,6 +22,7 @@ export default {
       if (!(await authed(req, env))) return json({ error: 'unauthorized' }, 401);
       if (p === '/api/schedule' && req.method === 'GET') return json(await load(env));
       if (p === '/api/schedule' && req.method === 'POST') return upsert(req, env, null);
+      if (p === '/api/parse' && req.method === 'POST') return aiParse(req, env);
       const m = p.match(/^\/api\/schedule\/([\w-]+)$/);
       if (m && req.method === 'PUT') return upsert(req, env, m[1]);
       if (m && req.method === 'DELETE') return remove(env, m[1]);
@@ -82,6 +83,51 @@ async function remove(env, id) {
   const list = await load(env);
   await save(env, list.filter(e => e.id !== id));
   return json({ ok: true });
+}
+
+/* ---------- AI解析 (Gemini) ---------- */
+
+async function aiParse(req, env) {
+  if (!env.GEMINI_API_KEY) return json({ error: 'GEMINI_API_KEY が未設定です' }, 500);
+  const { text, imageBase64, mimeType } = await req.json().catch(() => ({}));
+  if (!text && !imageBase64) return json({ error: 'テキストか画像を渡してください' }, 400);
+
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+  const prompt = `あなたはライブイベント告知の解析係です。与えられたフライヤー画像や告知テキストから情報を抽出し、次のJSONだけを返してください。
+{
+ "date": "yyyy-MM-dd",          // 公演日。年の記載がなければ今日(${today})以降で最も近い年を補う
+ "title": "イベントタイトル",
+ "venue": "会場名",
+ "open": "HH:MM",               // 開場時刻。不明なら空文字
+ "start": "HH:MM",              // 開演時刻。不明なら空文字
+ "tickets": [{"name": "前売", "price": "3000"}],  // 料金区分ごと。priceは数字のみの文字列
+ "drink": "+1drink ¥600",       // ドリンク代の表記。不明なら空文字
+ "note": "",                    // 入場順・注意事項など1行で。なければ空文字
+ "link": ""                     // チケットURL等。なければ空文字
+}
+不明な項目は空文字または空配列にする。推測で埋めない。JSON以外の文字は出力しない。`;
+
+  const parts = [{ text: prompt }];
+  if (imageBase64) parts.push({ inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } });
+  if (text) parts.push({ text: '--- 告知テキスト ---\n' + text });
+
+  const model = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
+    })
+  });
+  if (!res.ok) return json({ error: 'AI解析に失敗しました (' + res.status + ')' }, 502);
+  const data = await res.json();
+  const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  try {
+    return json(JSON.parse(raw));
+  } catch (e) {
+    return json({ error: 'AIの出力を解釈できませんでした' }, 502);
+  }
 }
 
 /* ---------- auth ---------- */
@@ -159,6 +205,11 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 .msg.ok{display:block;background:#e7f0e0;color:#2c5e2e}
 .msg.ng{display:block;background:#f7e2e2;color:#8c2b2b}
 #login{max-width:360px;margin:80px auto}
+.ai-box{background:var(--screen);border:1px solid var(--gold);border-radius:6px;padding:14px 16px;margin-bottom:18px}
+.ai-title{font-size:.82rem;font-weight:700;margin-bottom:8px}
+.ai-box textarea{resize:vertical}
+.ai-actions{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.ai-actions .primary{margin-left:auto}
 .hint{font-size:.75rem;color:var(--soft);margin-top:2px}
 /* プレビュー: サイトの見た目を再現 */
 #preview{background:var(--screen);border:1px dashed var(--gold);border-radius:6px;padding:14px 16px}
@@ -205,6 +256,18 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       <button type="button" class="small" id="importBtn">概要ジェネレータJSONを読み込む</button>
     </h2>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
+
+    <div class="ai-box">
+      <p class="ai-title">🤖 AI解析 — フライヤー画像や告知テキストからフォームを自動入力</p>
+      <textarea id="aiText" rows="3" placeholder="告知テキストを貼り付け（SNSの告知文・メールなど何でもOK）"></textarea>
+      <div class="ai-actions">
+        <button type="button" class="small" id="aiImageBtn">📷 フライヤー画像を選ぶ</button>
+        <span id="aiImageName" class="hint"></span>
+        <button type="button" class="primary small" id="aiRun">解析してフォームに反映</button>
+      </div>
+      <input type="file" id="aiImage" accept="image/*" hidden>
+    </div>
+
     <form id="f">
       <input type="hidden" id="id">
       <div class="row">
@@ -353,6 +416,53 @@ function fillDatalists(){
   set('dl-start', entries.map(e=>e.start));
   set('dl-drink', entries.map(e=>e.drink));
 }
+
+/* ---- AI解析 ---- */
+let aiImageData = null;
+$('aiImageBtn').onclick = ()=>$('aiImage').click();
+$('aiImage').addEventListener('change', ev=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    aiImageData = { base64: reader.result.split(',')[1], mime: file.type || 'image/jpeg' };
+    $('aiImageName').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+  ev.target.value='';
+});
+
+function applyParsed(r){
+  if(r.date) $('date').value = r.date;
+  if(r.title) $('title').value = r.title;
+  if(r.venue) $('venue').value = r.venue;
+  if(r.open) $('open').value = r.open;
+  if(r.start) $('start').value = r.start;
+  if(r.drink) $('drink').value = r.drink;
+  if(r.note) $('note').value = r.note;
+  if(r.link) $('link').value = r.link;
+  if(r.tickets && r.tickets.length){
+    $('tickets').innerHTML='';
+    r.tickets.forEach(t=>ticketRow(t.name, String(t.price)));
+  }
+  preview();
+}
+
+$('aiRun').onclick = async ()=>{
+  const text = $('aiText').value.trim();
+  if(!text && !aiImageData){ msg('テキストを貼るか画像を選んでください', false); return; }
+  $('aiRun').disabled = true; $('aiRun').textContent = '解析中…';
+  try{
+    const r = await api('/api/parse', {method:'POST', body: JSON.stringify({
+      text: text || undefined,
+      imageBase64: aiImageData ? aiImageData.base64 : undefined,
+      mimeType: aiImageData ? aiImageData.mime : undefined
+    })});
+    applyParsed(r);
+    msg('解析結果をフォームに反映しました。内容を確認・修正してから追加してください', true);
+    $('aiText').value=''; aiImageData=null; $('aiImageName').textContent='';
+  }catch(e){ msg(e.message, false); }
+  $('aiRun').disabled = false; $('aiRun').textContent = '解析してフォームに反映';
+};
 
 /* ---- 概要ジェネレータJSON読み込み ---- */
 $('importBtn').onclick = ()=>$('importFile').click();

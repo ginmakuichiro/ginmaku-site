@@ -178,6 +178,8 @@ section{padding-top:64px}
 .s-date .w{font-size:.72rem;color:var(--curtain);font-weight:700}
 .s-main .title{font-weight:700;font-size:1rem;line-height:1.5}
 .s-main .venue{font-size:.82rem;color:var(--ink-soft);margin-top:2px}
+.s-main .detail,.ticket-body .detail{font-size:.78rem;color:var(--ink-soft);margin-top:4px;letter-spacing:.02em}
+.ticket-body .detail{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
 .tag{
   display:inline-block;font-size:.66rem;font-weight:700;letter-spacing:.12em;
   padding:2px 10px;border-radius:2px;vertical-align:middle;
@@ -449,6 +451,7 @@ function renderSchedule(data){
           <div>${tagHtml(e.type)}</div>
           <p class="ticket-title serif">${e.title}</p>
           <p class="ticket-meta"><span>会場　<b>${e.venue}</b></span></p>
+          ${detailsHtml(e)}
         </div>
         <span class="ticket-stub-note">ADMIT ONE</span>
       </div>`;
@@ -459,6 +462,18 @@ function renderSchedule(data){
   document.getElementById("sched-upcoming").innerHTML =
     upcoming.length ? upcoming.map(e=>schedItemHtml(e)).join("") : '<li class="empty-note">現在予定されている公演はありません。</li>';
   document.getElementById("sched-past").innerHTML = past.map(e=>schedItemHtml(e,"past")).join("");
+}
+
+function detailsHtml(e){
+  const parts = [];
+  if(e.open || e.start){
+    const t = [e.open ? `OPEN ${e.open}` : "", e.start ? `START ${e.start}` : ""].filter(Boolean).join(" / ");
+    parts.push(t);
+  }
+  const fee = [e.adv ? `前売 ¥${Number(e.adv).toLocaleString()}` : "", e.door ? `当日 ¥${Number(e.door).toLocaleString()}` : ""].filter(Boolean).join(" / ");
+  if(fee) parts.push(fee);
+  if(e.note) parts.push(e.note);
+  return parts.length ? `<div class="detail">${parts.join("　｜　")}</div>` : "";
 }
 
 function schedItemHtml(e, extraClass=""){
@@ -472,6 +487,7 @@ function schedItemHtml(e, extraClass=""){
     <div class="s-main">
       <div class="title">${e.title}　${tagHtml(e.type)}</div>
       <div class="venue">${e.venue}</div>
+      ${detailsHtml(e)}
     </div>
     <div class="s-link">${e.link ? `<a href="${e.link}" target="_blank" rel="noopener">詳細</a>` : ""}</div>
   </li>`;

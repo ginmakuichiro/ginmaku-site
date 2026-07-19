@@ -425,10 +425,11 @@ const DOW = ["日","月","火","水","木","金","土"];
 const pad = n => String(n).padStart(2,"0");
 
 function parseDate(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
-function tagHtml(t){
-  return t === "solo"
-    ? '<span class="tag tag-solo">銀幕一楼ソロ</span>'
-    : '<span class="tag tag-band">バンド</span>';
+const TYPE_LABELS = {band:"バンド", band_support:"バンド(サポート)", solo_acoustic:"ソロ弾き語り", solo:"ソロ"};
+function isBandType(t){ return t === "band" || t === "band_support"; }
+function typeLabelOf(e){ return e.type === "other" ? (e.typeLabel || "出演") : (TYPE_LABELS[e.type] || "バンド"); }
+function tagHtml(e){
+  return `<span class="tag ${isBandType(e.type) ? "tag-band" : "tag-solo"}">${typeLabelOf(e)}</span>`;
 }
 
 function renderSchedule(data){
@@ -448,7 +449,7 @@ function renderSchedule(data){
           <span class="dow">${DOW[d.getDay()]}曜日</span>
         </div>
         <div class="ticket-body">
-          <div>${tagHtml(e.type)}</div>
+          <div>${tagHtml(e)}</div>
           <p class="ticket-title serif">${e.title}</p>
           <p class="ticket-meta"><span>会場　<b>${e.venue}</b></span></p>
           ${detailsHtml(e)}
@@ -470,7 +471,9 @@ function detailsHtml(e){
     const t = [e.open ? `OPEN ${e.open}` : "", e.start ? `START ${e.start}` : ""].filter(Boolean).join(" / ");
     parts.push(t);
   }
-  const fee = [e.adv ? `前売 ¥${Number(e.adv).toLocaleString()}` : "", e.door ? `当日 ¥${Number(e.door).toLocaleString()}` : ""].filter(Boolean).join(" / ");
+  const tickets = (e.tickets && e.tickets.length) ? e.tickets
+    : [e.adv ? {name:"前売", price:e.adv} : null, e.door ? {name:"当日", price:e.door} : null].filter(Boolean);
+  const fee = tickets.map(t => `${t.name} ¥${Number(t.price).toLocaleString()}`).join(" / ");
   if(fee) parts.push(fee);
   if(e.note) parts.push(e.note);
   return parts.length ? `<div class="detail">${parts.join("　｜　")}</div>` : "";
@@ -485,7 +488,7 @@ function schedItemHtml(e, extraClass=""){
       <span class="w">${DOW[d.getDay()]}</span>
     </div>
     <div class="s-main">
-      <div class="title">${e.title}　${tagHtml(e.type)}</div>
+      <div class="title">${e.title}　${tagHtml(e)}</div>
       <div class="venue">${e.venue}</div>
       ${detailsHtml(e)}
     </div>
@@ -515,7 +518,7 @@ document.getElementById("toggle-past").addEventListener("click", function(){
 let calYear, calMonth, scheduleData = [];
 
 function calEventHtml(e, today){
-  const cls = (e.type === "solo" ? "solo" : "band") + (parseDate(e.date) < today ? " done" : "");
+  const cls = (isBandType(e.type) ? "band" : "solo") + (parseDate(e.date) < today ? " done" : "");
   const inner = `<span class="cal-ev ${cls}" title="${e.title}／${e.venue}">${e.title}</span>`;
   return e.link ? `<a class="cal-ev ${cls}" href="${e.link}" target="_blank" rel="noopener" title="${e.title}／${e.venue}">${e.title}</a>` : inner;
 }

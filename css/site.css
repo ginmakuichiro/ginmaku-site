@@ -388,3 +388,13 @@ footer .sns a:hover{color:var(--gold)}
 .fv-links{gap:10px}
 .fv-btn{min-width:180px;padding:9px 12px;font-size:.82rem}
 .fv-btn small{font-size:.65rem}
+
+/* ---------- calendar: イベント名を折り返し（列伸び防止） ---------- */
+.cal-grid{grid-template-columns:repeat(7,minmax(0,1fr))}
+.cal-cell{min-width:0}
+.cal-ev{
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.35;
+  text-overflow:clip;
+}

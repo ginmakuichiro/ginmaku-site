@@ -105,6 +105,7 @@ function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;"
           <div class="et-row"><dt>会場</dt><dd>${esc(e.venue)}</dd></div>
           ${e.open || e.start ? `<div class="et-row"><dt>時間</dt><dd>${[e.open?`OPEN ${e.open}`:"",e.start?`START ${e.start}`:""].filter(Boolean).join(" ／ ")}</dd></div>` : ""}
           ${tickets.length ? `<div class="et-row"><dt>チケット</dt><dd><ul class="et-tickets">${tickets.map(t=>`<li><span>${esc(t.name)}</span><span class="price">¥${Number(t.price).toLocaleString()}</span></li>`).join("")}</ul></dd></div>` : ""}
+          ${e.drink ? `<div class="et-row"><dt>ドリンク</dt><dd>${esc(e.drink)}</dd></div>` : ""}
           ${e.note ? `<div class="et-row"><dt>備考</dt><dd class="et-note">${esc(e.note)}</dd></div>` : ""}
         </dl>
         ${e.link ? `<div class="et-actions"><a class="btn-gold" href="${esc(e.link)}" target="_blank" rel="noopener">チケット・詳細はこちら</a></div>` : ""}

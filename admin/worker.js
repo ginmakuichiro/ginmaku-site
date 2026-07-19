@@ -67,6 +67,7 @@ async function upsert(req, env, id) {
       ? b.tickets.map(t => ({ name: String(t.name || '').trim(), price: String(t.price || '').replace(/[^0-9]/g, '') }))
                  .filter(t => t.name && t.price)
       : [],
+    drink: String(b.drink || '').trim(),
     note: b.note || '', link: b.link || '',
     publishAt: b.publishAt || ''
   };
@@ -172,6 +173,17 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 #preview .tag{display:inline-block;font-size:.64rem;font-weight:700;letter-spacing:.1em;padding:1px 9px;border-radius:2px;vertical-align:middle}
 #preview .tag.fill{background:var(--curtain);color:var(--screen)}
 #preview .tag.line{background:transparent;color:var(--curtain);border:1px solid var(--curtain)}
+/* 詳細ページプレビュー */
+#preview2 .e-ticket{border:1px dashed var(--gold);border-radius:6px;overflow:hidden;background:var(--screen)}
+#preview2 .e-head{background:var(--dark);color:var(--screen);padding:14px 18px;position:relative;border-bottom:2px dashed var(--screen)}
+#preview2 .e-stub{position:absolute;top:8px;right:12px;font-size:.6rem;letter-spacing:.3em;color:var(--gold);font-weight:700}
+#preview2 .e-date{font-size:.85rem;color:var(--gold);letter-spacing:.12em}
+#preview2 .e-head h3{font-size:1.15rem;margin-top:2px}
+#preview2 .e-body{padding:14px 18px}
+#preview2 .e-row{display:grid;grid-template-columns:90px 1fr;gap:4px 14px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.85rem}
+#preview2 .e-row dt{font-weight:700;font-size:.72rem;color:var(--soft);letter-spacing:.15em;padding-top:2px}
+#preview2 .e-tk{display:flex;justify-content:space-between;max-width:240px}
+#preview2 .e-btn{display:inline-block;margin-top:12px;background:var(--gold);color:var(--dark);font-weight:700;font-size:.78rem;letter-spacing:.12em;padding:8px 22px;border-radius:2px}
 @media(max-width:600px){.row{grid-template-columns:1fr}}
 </style>
 </head>
@@ -217,13 +229,16 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       <label>チケット料金</label>
       <div id="tickets"></div>
       <button type="button" class="ghost" id="addTicket">＋ 料金項目を追加（学割・配信など）</button>
+      <label>ドリンク代</label><input id="drink" list="dl-drink" autocomplete="off" placeholder="例: +1drink ¥600 / +2D">
       <label>チケット/詳細リンク</label><input id="link" type="url" placeholder="https://（毎回貼り付け。候補保存はされません）">
-      <label>備考</label><input id="note" placeholder="+1drink / 入場順 など">
+      <label>備考</label><input id="note" placeholder="入場順 など">
       <label>公開日時（情報解禁）</label><input type="datetime-local" id="publishAt">
       <p class="hint">空欄なら即公開。指定するとその時刻までサイトに表示されません。</p>
 
-      <label style="margin-top:16px">サイトでの見え方プレビュー</label>
+      <label style="margin-top:16px">サイトでの見え方プレビュー（一覧）</label>
       <div id="preview"></div>
+      <label style="margin-top:14px">詳細ページのプレビュー（見出しクリック先）</label>
+      <div id="preview2"></div>
 
       <div style="margin-top:16px;display:flex;gap:10px">
         <button type="submit" class="primary" id="submitBtn">追加する</button>
@@ -234,6 +249,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
     <datalist id="dl-venue"></datalist>
     <datalist id="dl-open"></datalist>
     <datalist id="dl-start"></datalist>
+    <datalist id="dl-drink"></datalist>
   </div>
   <div class="card">
     <h2>登録済み公演</h2>
@@ -286,6 +302,7 @@ function detailText(e){
   if(e.open||e.start) parts.push([e.open?'OPEN '+e.open:'', e.start?'START '+e.start:''].filter(Boolean).join(' / '));
   const fee=(e.tickets||[]).map(t=>t.name+' ¥'+Number(t.price).toLocaleString()).join(' / ');
   if(fee) parts.push(fee);
+  if(e.drink) parts.push(e.drink);
   if(e.note) parts.push(e.note);
   return parts.join('　｜　');
 }
@@ -293,7 +310,7 @@ function formEntry(){
   return { date:$('date').value, title:$('title').value.trim(), venue:$('venue').value.trim(),
     type:$('type').value, typeLabel:$('typeLabel').value.trim(),
     open:$('open').value.trim(), start:$('start').value.trim(),
-    tickets:getTickets(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
+    tickets:getTickets(), drink:$('drink').value.trim(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
 }
 function preview(){
   const e = formEntry();
@@ -305,8 +322,26 @@ function preview(){
     + '<div class="p-venue">'+esc(e.venue||'会場')+'</div>'
     + (detailText(e)?'<div class="p-detail">'+esc(detailText(e))+'</div>':'')
     + '</div></div>';
+  preview2(e);
 }
-['date','title','venue','open','start','note','link','typeLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
+function preview2(e){
+  const d = e.date ? new Date(e.date+'T00:00') : null;
+  const dateStr = d ? d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0')+' '+DOW[d.getDay()]+'曜日' : '日付未定';
+  const tag = '<span class="tag '+(isFill(e.type)?'fill':'line')+'">'+esc(typeLabelOf(e))+'</span>';
+  const rows = [];
+  rows.push('<div class="e-row"><dt>出演</dt><dd>'+tag+'</dd></div>');
+  rows.push('<div class="e-row"><dt>会場</dt><dd>'+esc(e.venue||'会場')+'</dd></div>');
+  if(e.open||e.start) rows.push('<div class="e-row"><dt>時間</dt><dd>'+[e.open?'OPEN '+e.open:'',e.start?'START '+e.start:''].filter(Boolean).join(' ／ ')+'</dd></div>');
+  if((e.tickets||[]).length) rows.push('<div class="e-row"><dt>チケット</dt><dd>'+e.tickets.map(t=>'<span class="e-tk"><span>'+esc(t.name)+'</span><b>¥'+Number(t.price).toLocaleString()+'</b></span>').join('')+'</dd></div>');
+  if(e.drink) rows.push('<div class="e-row"><dt>ドリンク</dt><dd>'+esc(e.drink)+'</dd></div>');
+  if(e.note) rows.push('<div class="e-row"><dt>備考</dt><dd>'+esc(e.note)+'</dd></div>');
+  $('preview2').innerHTML = '<div class="e-ticket">'
+    + '<div class="e-head"><span class="e-stub">ADMIT ONE</span><p class="e-date">'+dateStr+'</p><h3>'+esc(e.title||'タイトル')+'</h3></div>'
+    + '<div class="e-body"><dl>'+rows.join('')+'</dl>'
+    + (e.link?'<span class="e-btn">チケット・詳細はこちら</span>':'')
+    + '</div></div>';
+}
+['date','title','venue','open','start','drink','note','link','typeLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
 $('type').addEventListener('change', ()=>{ $('typeLabelWrap').hidden = $('type').value!=='other'; preview(); });
 
 /* ---- 入力候補（過去の登録から） ---- */
@@ -316,6 +351,7 @@ function fillDatalists(){
   set('dl-venue', entries.map(e=>e.venue));
   set('dl-open', entries.map(e=>e.open));
   set('dl-start', entries.map(e=>e.start));
+  set('dl-drink', entries.map(e=>e.drink));
 }
 
 /* ---- 概要ジェネレータJSON読み込み ---- */
@@ -335,6 +371,7 @@ $('importFile').addEventListener('change', ev=>{
       $('tickets').innerHTML='';
       (o.tickets||[]).forEach(t=>ticketRow(t.name, String(t.price)));
       if(!(o.tickets||[]).length){ ticketRow('前売',''); ticketRow('当日',''); }
+      if(o.drinks && o.drinks.length) $('drink').value = o.drinks.map(t=>t.name+' ¥'+t.price).join(' / ');
       if(o.playguides && o.playguides[0] && o.playguides[0].url) $('link').value = o.playguides[0].url;
       if(o.otherInfo) $('note').value = String(o.otherInfo).split('\\n')[0];
       preview();
@@ -370,7 +407,7 @@ async function refresh(){
 
 window.edit = id => {
   const e = entries.find(x=>x.id===id); if(!e) return;
-  ['date','title','venue','type','typeLabel','open','start','note','link','publishAt'].forEach(k=>$(k).value=e[k]||'');
+  ['date','title','venue','type','typeLabel','open','start','drink','note','link','publishAt'].forEach(k=>$(k).value=e[k]||'');
   $('typeLabelWrap').hidden = e.type!=='other';
   $('tickets').innerHTML='';
   (e.tickets&&e.tickets.length ? e.tickets : [{name:'前売',price:''},{name:'当日',price:''}]).forEach(t=>ticketRow(t.name,t.price));

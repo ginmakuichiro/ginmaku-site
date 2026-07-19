@@ -25,6 +25,7 @@ function detailsHtml(e){
   }
   const fee = ticketsOf(e).map(t => `${t.name} ¥${Number(t.price).toLocaleString()}`).join(" / ");
   if(fee) parts.push(fee);
+  if(e.drink) parts.push(e.drink);
   if(e.note) parts.push(e.note);
   return parts.length ? `<div class="detail">${parts.join("　｜　")}</div>` : "";
 }

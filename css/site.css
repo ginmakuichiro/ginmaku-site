@@ -377,3 +377,14 @@ footer .sns a:hover{color:var(--gold)}
 .fv-btn small{display:block;font-weight:500;font-size:.7rem;color:var(--ink-soft);margin-top:2px}
 .fv-btn:hover{background:var(--ink);color:var(--screen)}
 .fv-btn:hover small{color:var(--screen-dim)}
+
+/* ---------- cta 8割サイズ調整 ---------- */
+.shikishi-cta{padding:18px 16px;margin-top:32px;max-width:820px;margin-left:auto;margin-right:auto}
+.shikishi-lead{font-size:.9rem;margin-bottom:10px}
+.shikishi-cta .btn-gold{font-size:.78rem;padding:8px 26px}
+.fan-video-box{padding:16px 18px;margin-top:22px}
+.fv-title{font-size:.92rem;margin-bottom:6px}
+.fv-text{font-size:.78rem;margin-bottom:12px}
+.fv-links{gap:10px}
+.fv-btn{min-width:180px;padding:9px 12px;font-size:.82rem}
+.fv-btn small{font-size:.65rem}

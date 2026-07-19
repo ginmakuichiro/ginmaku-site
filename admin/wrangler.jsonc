@@ -1,0 +1,12 @@
+{
+  "name": "ginmaku-admin",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-01",
+  "routes": [
+    { "pattern": "admin.ginmakuichiro.net", "custom_domain": true }
+  ],
+  "kv_namespaces": [
+    { "binding": "DATA", "id": "a92bec0b73ec44e2ab0e5a5794cf2420" }
+  ],
+  "observability": { "enabled": true }
+}

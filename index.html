@@ -572,12 +572,16 @@ async function loadJson(url){
   if(!res.ok) throw new Error(`${url}: ${res.status}`);
   return res.json();
 }
+async function loadJsonWithFallback(primary, fallback){
+  try{ return await loadJson(primary); }
+  catch(e){ console.warn(`${primary} に接続できないためローカルデータを使用`, e); return loadJson(fallback); }
+}
 
 (async ()=>{
   const now = new Date();
   calYear = now.getFullYear(); calMonth = now.getMonth();
   try{
-    scheduleData = await loadJson("data/schedule.json");
+    scheduleData = await loadJsonWithFallback("https://admin.ginmakuichiro.net/data/schedule.json", "data/schedule.json");
     renderSchedule(scheduleData);
   }catch(err){
     console.error(err);

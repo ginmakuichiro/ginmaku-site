@@ -342,3 +342,12 @@ footer .sns a:hover{color:var(--gold)}
 .profile-duo{align-items:start;margin-top:14px}
 .profile-side-photo img{width:100%;height:auto;border-radius:4px}
 @media(max-width:720px){.profile-side-photo{margin-bottom:8px}}
+
+/* ---------- hero ticket 8割サイズ調整 ---------- */
+.hero{padding:76px 20px 60px}
+.hero-inner{max-width:620px}
+.ticket{grid-template-columns:126px 1fr}
+.ticket-date{padding:20px 8px}
+.ticket-date .day{font-size:2.5rem}
+.ticket-body{padding:18px 22px 16px}
+.ticket-title{font-size:1.2rem}

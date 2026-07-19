@@ -23,6 +23,9 @@
 .news-article h2{font-family:'Shippori Mincho B1',serif;font-size:1.2rem;font-weight:700;line-height:1.5;margin-bottom:10px}
 .news-article .body{font-size:.92rem;white-space:pre-wrap;word-break:break-word}
 .news-article .body a{color:var(--curtain);word-break:break-all}
+.news-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+.news-gallery a{display:block}
+.news-gallery img{width:100%;height:auto;border-radius:4px;border:1px solid var(--line);display:block}
 </style>
 </head>
 <body>
@@ -76,6 +79,7 @@
         <h2>${escHtml(n.title)}</h2>
         ${n.body ? `<div class="body">${linkify(n.body)}</div>`
           : (n.link && n.link !== "#" ? `<div class="body"><a href="${escHtml(n.link)}" target="_blank" rel="noopener">${escHtml(n.link)}</a></div>` : "")}
+        ${(n.images||[]).length ? `<div class="news-gallery">${n.images.map((id,i)=>`<a href="https://admin.ginmakuichiro.net/img/${id}" target="_blank" rel="noopener"><img src="https://admin.ginmakuichiro.net/img/${id}" alt="${escHtml(n.title)} 画像${i+1}" loading="lazy"></a>`).join("")}</div>` : ""}
       </article>`).join("") || '<p class="empty-note">お知らせはまだありません。</p>';
     if(location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   }catch(err){

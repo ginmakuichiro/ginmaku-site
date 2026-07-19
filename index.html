@@ -169,7 +169,7 @@ function renderTop(data){
   }
 
   document.getElementById("sched-upcoming").innerHTML =
-    upcoming.length ? upcoming.slice(0,5).map(e=>schedItemHtml(e)).join("") : '<li class="empty-note">現在予定されている公演はありません。</li>';
+    upcoming.length ? upcoming.slice(0,3).map(e=>schedItemHtml(e)).join("") : '<li class="empty-note">現在予定されている公演はありません。</li>';
 }
 
 function renderNews(data){

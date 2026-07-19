@@ -36,7 +36,10 @@ export default {
       const mn = p.match(/^\/api\/news\/([\w-]+)$/);
       if (mn && req.method === 'PUT') return upsertNews(req, env, mn[1]);
       if (mn && req.method === 'DELETE') {
-        await saveNews(env, (await loadNews(env)).filter(e => e.id !== mn[1]));
+        const nl = await loadNews(env);
+        const tgt = nl.find(e => e.id === mn[1]);
+        for (const img of (tgt?.images || [])) await env.DATA.delete(img);
+        await saveNews(env, nl.filter(e => e.id !== mn[1]));
         return json({ ok: true });
       }
       return json({ error: 'not found' }, 404);
@@ -141,11 +144,19 @@ async function upsertNews(req, env, id) {
     title: String(b.title).trim(),
     body: String(b.body || '').trim(),
     link: b.link || '',
+    images: Array.isArray(b.images)
+      ? b.images.filter(s => typeof s === 'string' && /^img_[\w-]+$/.test(s)).slice(0, 4)
+      : [],
     publishAt: b.publishAt || ''
   };
   const list = await loadNews(env);
   const i = list.findIndex(e => e.id === entry.id);
-  if (i >= 0) list[i] = entry; else list.push(entry);
+  if (i >= 0) {
+    for (const old of (list[i].images || [])) {
+      if (!entry.images.includes(old)) await env.DATA.delete(old);
+    }
+    list[i] = entry;
+  } else list.push(entry);
   await saveNews(env, list);
   return json(entry);
 }
@@ -446,6 +457,10 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       </div>
       <label>タイトル *</label><input id="nTitle" required>
       <label>本文（改行OK・URLは自動でリンクになります）</label><textarea id="nBody" rows="6" placeholder="お知らせの本文。URLを貼るとサイト上で自動的にリンクになります"></textarea>
+      <label>画像（最大4枚・自動で縮小されます）</label>
+      <div id="nImgThumbs" class="img-thumbs"></div>
+      <button type="button" class="ghost" id="nAddImageBtn">＋ 画像を追加</button>
+      <input type="file" id="nImgFile" accept="image/*" multiple hidden>
       <label>公開日時（情報解禁）</label><input type="datetime-local" id="nPublishAt">
       <p class="hint">空欄なら即公開。指定するとその時刻までサイトに表示されません。</p>
       <div style="margin-top:16px;display:flex;gap:10px">
@@ -760,6 +775,41 @@ $('tabNewsBtn').onclick = ()=>setTab(false);
 /* ---- ニュース ---- */
 let newsEntries = [];
 
+let nImages = [], nNewImageIds = new Set();
+
+function renderNThumbs(){
+  $('nImgThumbs').innerHTML = nImages.map((id,i)=>
+    '<div class="th"><img src="/img/'+id+'" alt="画像'+(i+1)+'">'
+    + '<button type="button" class="rm" data-id="'+id+'" title="削除">×</button></div>').join('');
+  $('nImgThumbs').querySelectorAll('.rm').forEach(b=>b.onclick=async ()=>{
+    const id = b.dataset.id;
+    nImages = nImages.filter(x=>x!==id);
+    if(nNewImageIds.has(id)){ nNewImageIds.delete(id); api('/api/image/'+id,{method:'DELETE'}).catch(()=>{}); }
+    renderNThumbs();
+  });
+  $('nAddImageBtn').hidden = nImages.length >= 4;
+}
+
+$('nAddImageBtn').onclick = ()=>$('nImgFile').click();
+$('nImgFile').addEventListener('change', async ev=>{
+  const files = [...ev.target.files].slice(0, 4 - nImages.length);
+  ev.target.value='';
+  for(const file of files){
+    const ph = document.createElement('div'); ph.className='uploading'; ph.textContent='縮小中…';
+    $('nImgThumbs').appendChild(ph);
+    try{
+      const blob = await resizeImage(file);
+      ph.textContent = 'アップロード中…';
+      const r = await fetch('/api/image', {method:'POST', headers:{'content-type':'image/jpeg'}, body: blob});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'アップロード失敗');
+      nImages.push(d.id); nNewImageIds.add(d.id);
+    }catch(e){ msg(file.name+': '+e.message, false); }
+    ph.remove();
+  }
+  renderNThumbs();
+});
+
 async function refreshNews(){
   newsEntries = await api('/api/news');
   const now = Date.now();
@@ -780,6 +830,7 @@ window.editNews = id => {
   const e = newsEntries.find(x=>x.id===id); if(!e) return;
   $('nId').value=e.id; $('nDate').value=e.date; $('nCategory').value=e.category;
   $('nTitle').value=e.title; $('nBody').value=e.body||''; $('nPublishAt').value=e.publishAt||'';
+  nImages = (e.images||[]).slice(); nNewImageIds = new Set(); renderNThumbs();
   $('nFormTitle').textContent='ニュースを編集'; $('nSubmitBtn').textContent='保存する'; $('nCancelEdit').hidden=false;
   window.scrollTo({top:0,behavior:'smooth'});
 };
@@ -792,6 +843,7 @@ window.delNews = async id => {
 
 function resetNewsForm(){
   $('nf').reset(); $('nId').value=''; $('nCategory').value='NEWS';
+  nImages = []; nNewImageIds = new Set(); renderNThumbs();
   $('nFormTitle').textContent='ニュースを追加'; $('nSubmitBtn').textContent='追加する'; $('nCancelEdit').hidden=true;
 }
 $('nCancelEdit').onclick = resetNewsForm;
@@ -800,9 +852,11 @@ $('nf').onsubmit = async ev => {
   ev.preventDefault();
   const id = $('nId').value;
   const body = { date:$('nDate').value, category:$('nCategory').value.trim(),
-    title:$('nTitle').value.trim(), body:$('nBody').value.trim(), publishAt:$('nPublishAt').value };
+    title:$('nTitle').value.trim(), body:$('nBody').value.trim(),
+    images:nImages.slice(0,4), publishAt:$('nPublishAt').value };
   try{
     await api(id?'/api/news/'+id:'/api/news', {method:id?'PUT':'POST', body:JSON.stringify(body)});
+    nNewImageIds = new Set();
     msg(id?'保存しました':'追加しました', true); resetNewsForm(); refreshNews();
   }catch(e){ msg(e.message, false); }
 };

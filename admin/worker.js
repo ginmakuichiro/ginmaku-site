@@ -17,12 +17,16 @@ export default {
     const p = url.pathname;
 
     if (p === '/data/schedule.json') return publicSchedule(env);
+    if (p.startsWith('/img/')) return serveImage(env, p.slice(5));
     if (p === '/api/login' && req.method === 'POST') return login(req, env);
     if (p.startsWith('/api/')) {
       if (!(await authed(req, env))) return json({ error: 'unauthorized' }, 401);
       if (p === '/api/schedule' && req.method === 'GET') return json(await load(env));
       if (p === '/api/schedule' && req.method === 'POST') return upsert(req, env, null);
       if (p === '/api/parse' && req.method === 'POST') return aiParse(req, env);
+      if (p === '/api/image' && req.method === 'POST') return uploadImage(req, env);
+      const mi = p.match(/^\/api\/image\/(img_[\w-]+)$/);
+      if (mi && req.method === 'DELETE') { await env.DATA.delete(mi[1]); return json({ ok: true }); }
       const m = p.match(/^\/api\/schedule\/([\w-]+)$/);
       if (m && req.method === 'PUT') return upsert(req, env, m[1]);
       if (m && req.method === 'DELETE') return remove(env, m[1]);
@@ -70,19 +74,57 @@ async function upsert(req, env, id) {
       : [],
     drink: String(b.drink || '').trim(),
     note: b.note || '', link: b.link || '',
+    images: Array.isArray(b.images)
+      ? b.images.filter(s => typeof s === 'string' && /^img_[\w-]+$/.test(s)).slice(0, 4)
+      : [],
     publishAt: b.publishAt || ''
   };
   const list = await load(env);
   const i = list.findIndex(e => e.id === entry.id);
-  if (i >= 0) list[i] = entry; else list.push(entry);
+  if (i >= 0) {
+    // 編集で外された画像は削除
+    for (const old of (list[i].images || [])) {
+      if (!entry.images.includes(old)) await env.DATA.delete(old);
+    }
+    list[i] = entry;
+  } else list.push(entry);
   await save(env, list);
   return json(entry);
 }
 
 async function remove(env, id) {
   const list = await load(env);
+  const target = list.find(e => e.id === id);
+  for (const img of (target?.images || [])) await env.DATA.delete(img);
   await save(env, list.filter(e => e.id !== id));
   return json({ ok: true });
+}
+
+/* ---------- 画像 ---------- */
+
+const IMG_MAX_BYTES = 2_500_000; // クライアント側で縮小済みの想定。サーバー側ガード
+
+async function uploadImage(req, env) {
+  const mime = req.headers.get('content-type') || 'image/jpeg';
+  if (!/^image\//.test(mime)) return json({ error: '画像ファイルを送ってください' }, 400);
+  const buf = await req.arrayBuffer();
+  if (buf.byteLength > IMG_MAX_BYTES) return json({ error: '画像が大きすぎます（2.5MBまで）' }, 413);
+  const id = 'img_' + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  await env.DATA.put(id, buf, { metadata: { mime } });
+  return json({ id });
+}
+
+async function serveImage(env, key) {
+  if (!/^img_[\w-]+$/.test(key)) return new Response('not found', { status: 404 });
+  const { value, metadata } = await env.DATA.getWithMetadata(key, { type: 'arrayBuffer' });
+  if (!value) return new Response('not found', { status: 404 });
+  return new Response(value, {
+    headers: {
+      'content-type': metadata?.mime || 'image/jpeg',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'access-control-allow-origin': '*'
+    }
+  });
 }
 
 /* ---------- AI解析 (Gemini) ---------- */
@@ -102,7 +144,7 @@ async function aiParse(req, env) {
  "start": "HH:MM",              // 開演時刻。不明なら空文字
  "tickets": [{"name": "前売", "price": "3000"}],  // 料金区分ごと。priceは数字のみの文字列
  "drink": "+1drink ¥600",       // ドリンク代の表記。不明なら空文字
- "note": "",                    // 入場順・注意事項など1行で。なければ空文字
+ "note": "",                    // 入場順・注意事項など。複数あれば改行(\\n)区切り。なければ空文字
  "link": ""                     // チケットURL等。なければ空文字
 }
 不明な項目は空文字または空配列にする。推測で埋めない。JSON以外の文字は出力しない。`;
@@ -210,6 +252,11 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 .ai-box textarea{resize:vertical}
 .ai-actions{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .ai-actions .primary{margin-left:auto}
+.img-thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.img-thumbs .th{position:relative;width:110px}
+.img-thumbs img{width:110px;height:110px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
+.img-thumbs .rm{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#a33;color:#fff;border:none;font-size:.8rem;line-height:1;padding:0}
+.img-thumbs .uploading{display:flex;align-items:center;justify-content:center;width:110px;height:110px;border:1px dashed var(--line);border-radius:4px;color:var(--soft);font-size:.7rem}
 .hint{font-size:.75rem;color:var(--soft);margin-top:2px}
 /* プレビュー: サイトの見た目を再現 */
 #preview{background:var(--screen);border:1px dashed var(--gold);border-radius:6px;padding:14px 16px}
@@ -294,7 +341,12 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       <button type="button" class="ghost" id="addTicket">＋ 料金項目を追加（学割・配信など）</button>
       <label>ドリンク代</label><input id="drink" list="dl-drink" autocomplete="off" placeholder="例: +1drink ¥600 / +2D">
       <label>チケット/詳細リンク</label><input id="link" type="url" placeholder="https://（毎回貼り付け。候補保存はされません）">
-      <label>備考</label><input id="note" placeholder="入場順 など">
+      <label>備考（改行OK）</label><textarea id="note" rows="3" placeholder="入場順・注意事項など"></textarea>
+      <label>フライヤー画像（最大4枚・自動で縮小されます）</label>
+      <div id="imgThumbs" class="img-thumbs"></div>
+      <button type="button" class="ghost" id="addImageBtn">＋ 画像を追加（フライヤー・タイムテーブルなど）</button>
+      <input type="file" id="imgFile" accept="image/*" multiple hidden>
+
       <label>公開日時（情報解禁）</label><input type="datetime-local" id="publishAt">
       <p class="hint">空欄なら即公開。指定するとその時刻までサイトに表示されません。</p>
 
@@ -366,14 +418,14 @@ function detailText(e){
   const fee=(e.tickets||[]).map(t=>t.name+' ¥'+Number(t.price).toLocaleString()).join(' / ');
   if(fee) parts.push(fee);
   if(e.drink) parts.push(e.drink);
-  if(e.note) parts.push(e.note);
+  if(e.note) parts.push(String(e.note).split('\\n').join('　／　'));
   return parts.join('　｜　');
 }
 function formEntry(){
   return { date:$('date').value, title:$('title').value.trim(), venue:$('venue').value.trim(),
     type:$('type').value, typeLabel:$('typeLabel').value.trim(),
     open:$('open').value.trim(), start:$('start').value.trim(),
-    tickets:getTickets(), drink:$('drink').value.trim(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
+    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
 }
 function preview(){
   const e = formEntry();
@@ -397,10 +449,11 @@ function preview2(e){
   if(e.open||e.start) rows.push('<div class="e-row"><dt>時間</dt><dd>'+[e.open?'OPEN '+e.open:'',e.start?'START '+e.start:''].filter(Boolean).join(' ／ ')+'</dd></div>');
   if((e.tickets||[]).length) rows.push('<div class="e-row"><dt>チケット</dt><dd>'+e.tickets.map(t=>'<span class="e-tk"><span>'+esc(t.name)+'</span><b>¥'+Number(t.price).toLocaleString()+'</b></span>').join('')+'</dd></div>');
   if(e.drink) rows.push('<div class="e-row"><dt>ドリンク</dt><dd>'+esc(e.drink)+'</dd></div>');
-  if(e.note) rows.push('<div class="e-row"><dt>備考</dt><dd>'+esc(e.note)+'</dd></div>');
+  if(e.note) rows.push('<div class="e-row"><dt>備考</dt><dd style="white-space:pre-wrap">'+esc(e.note)+'</dd></div>');
   $('preview2').innerHTML = '<div class="e-ticket">'
     + '<div class="e-head"><span class="e-stub">ADMIT ONE</span><p class="e-date">'+dateStr+'</p><h3>'+esc(e.title||'タイトル')+'</h3></div>'
     + '<div class="e-body"><dl>'+rows.join('')+'</dl>'
+    + ((e.images||[]).length?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+e.images.map(id=>'<img src="/img/'+id+'" style="width:90px;height:90px;object-fit:cover;border-radius:4px;border:1px solid var(--line)">').join('')+'</div>':'')
     + (e.link?'<span class="e-btn">チケット・詳細はこちら</span>':'')
     + '</div></div>';
 }
@@ -416,6 +469,55 @@ function fillDatalists(){
   set('dl-start', entries.map(e=>e.start));
   set('dl-drink', entries.map(e=>e.drink));
 }
+
+/* ---- フライヤー画像 ---- */
+let images = [];        // 保存対象の画像ID配列（表示順）
+let newImageIds = new Set();  // このセッションでアップロードした未保存ID
+
+const IMG_MAX_SIDE = 1600, IMG_QUALITY = 0.82;
+
+async function resizeImage(file){
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, IMG_MAX_SIDE / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  return new Promise(res => canvas.toBlob(res, 'image/jpeg', IMG_QUALITY));
+}
+
+function renderThumbs(){
+  $('imgThumbs').innerHTML = images.map((id,i)=>
+    '<div class="th"><img src="/img/'+id+'" alt="フライヤー'+(i+1)+'">'
+    + '<button type="button" class="rm" data-id="'+id+'" title="削除">×</button></div>').join('');
+  $('imgThumbs').querySelectorAll('.rm').forEach(b=>b.onclick=async ()=>{
+    const id = b.dataset.id;
+    images = images.filter(x=>x!==id);
+    if(newImageIds.has(id)){ newImageIds.delete(id); api('/api/image/'+id,{method:'DELETE'}).catch(()=>{}); }
+    renderThumbs(); preview();
+  });
+  $('addImageBtn').hidden = images.length >= 4;
+}
+
+$('addImageBtn').onclick = ()=>$('imgFile').click();
+$('imgFile').addEventListener('change', async ev=>{
+  const files = [...ev.target.files].slice(0, 4 - images.length);
+  ev.target.value='';
+  for(const file of files){
+    const ph = document.createElement('div'); ph.className='uploading'; ph.textContent='縮小中…';
+    $('imgThumbs').appendChild(ph);
+    try{
+      const blob = await resizeImage(file);
+      ph.textContent = 'アップロード中…';
+      const r = await fetch('/api/image', {method:'POST', headers:{'content-type':'image/jpeg'}, body: blob});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'アップロード失敗');
+      images.push(d.id); newImageIds.add(d.id);
+    }catch(e){ msg(file.name+': '+e.message, false); }
+    ph.remove();
+  }
+  renderThumbs(); preview();
+});
 
 /* ---- AI解析 ---- */
 let aiImageData = null;
@@ -522,6 +624,7 @@ window.edit = id => {
   $('tickets').innerHTML='';
   (e.tickets&&e.tickets.length ? e.tickets : [{name:'前売',price:''},{name:'当日',price:''}]).forEach(t=>ticketRow(t.name,t.price));
   $('id').value = e.id;
+  images = (e.images||[]).slice(); newImageIds = new Set(); renderThumbs();
   $('formTitle').textContent='公演を編集'; $('submitBtn').textContent='保存する'; $('cancelEdit').hidden=false;
   preview();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -537,6 +640,7 @@ function resetForm(){
   $('f').reset(); $('id').value='';
   $('typeLabelWrap').hidden=true;
   $('tickets').innerHTML=''; ticketRow('前売',''); ticketRow('当日','');
+  images = []; newImageIds = new Set(); renderThumbs();
   $('formTitle').textContent='公演を追加'; $('submitBtn').textContent='追加する'; $('cancelEdit').hidden=true;
   preview();
 }
@@ -547,6 +651,7 @@ $('f').onsubmit = async ev => {
   const id = $('id').value;
   try{
     await api(id?'/api/schedule/'+id:'/api/schedule', {method:id?'PUT':'POST', body:JSON.stringify(formEntry())});
+    newImageIds = new Set();
     msg(id?'保存しました':'追加しました', true); resetForm(); refresh();
   }catch(e){ msg(e.message, false); }
 };

@@ -382,7 +382,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
         <div><label>出演形態 *</label>
           <select id="type">
             <option value="band">バンド（フルメンバー）</option>
-            <option value="band_support">バンド（サポートメンバー）</option>
+            <option value="band_support">バンド（keyサポート）</option>
             <option value="solo_acoustic">ソロ弾き語り</option>
             <option value="solo">ソロ</option>
             <option value="other">その他（自由入力）</option>
@@ -461,7 +461,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 </main>
 <script>
 const $ = id => document.getElementById(id);
-const TYPE_LABELS = {band:'バンド', band_support:'バンド(サポート)', solo_acoustic:'ソロ弾き語り', solo:'ソロ'};
+const TYPE_LABELS = {band:'バンド', band_support:'バンド(keyサポート)', solo_acoustic:'ソロ弾き語り', solo:'ソロ'};
 const DOW = ['日','月','火','水','木','金','土'];
 let entries = [];
 

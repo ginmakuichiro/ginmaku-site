@@ -6,7 +6,7 @@ const pad = n => String(n).padStart(2,"0");
 
 function parseDate(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
 
-const TYPE_LABELS = {band:"バンド", band_support:"バンド(keyサポート)", solo_acoustic:"ソロ弾き語り", solo:"ソロ"};
+const TYPE_LABELS = {band:"バンド", band_support:"バンド(keyサポート)", solo_acoustic:"銀幕一楼ソロ弾き語り", solo:"銀幕一楼ソロ"};
 function isBandType(t){ return t === "band" || t === "band_support"; }
 function typeLabelOf(e){ return e.type === "other" ? (e.typeLabel || "出演") : (TYPE_LABELS[e.type] || "バンド"); }
 function tagHtml(e){

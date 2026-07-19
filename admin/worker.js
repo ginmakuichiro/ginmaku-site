@@ -82,6 +82,7 @@ async function upsert(req, env, id) {
                  .filter(t => t.name && t.price)
       : [],
     drink: String(b.drink || '').trim(),
+    lineup: String(b.lineup || '').trim(),
     note: b.note || '', link: b.link || '',
     images: Array.isArray(b.images)
       ? b.images.filter(s => typeof s === 'string' && /^img_[\w-]+$/.test(s)).slice(0, 4)
@@ -193,6 +194,7 @@ async function aiParse(req, env) {
  "start": "HH:MM",              // 開演時刻。不明なら空文字
  "tickets": [{"name": "前売", "price": "3000"}],  // 料金区分ごと。priceは数字のみの文字列
  "drink": "+1drink ¥600",       // ドリンク代の表記。不明なら空文字
+ "lineup": "",                  // 出演バンド・アーティストを全て改行(\\n)区切りで。銀幕一楼とTIMECAFE自身も含める。不明なら空文字
  "note": "",                    // 入場順・注意事項など。複数あれば改行(\\n)区切り。なければ空文字
  "link": ""                     // チケットURL等。なければ空文字
 }
@@ -400,6 +402,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       <div id="tickets"></div>
       <button type="button" class="ghost" id="addTicket">＋ 料金項目を追加（学割・配信など）</button>
       <label>ドリンク代</label><input id="drink" list="dl-drink" autocomplete="off" placeholder="例: +1drink ¥600 / +2D">
+      <label>出演（対バン含む全バンド・改行区切り）</label><textarea id="lineup" rows="4" placeholder="銀幕一楼とTIMECAFE&#10;○○バンド&#10;△△（O.A.）"></textarea>
       <label>チケット/詳細リンク</label><input id="link" type="url" placeholder="https://（毎回貼り付け。候補保存はされません）">
       <label>備考（改行OK）</label><textarea id="note" rows="3" placeholder="入場順・注意事項など"></textarea>
       <label>フライヤー画像（最大4枚・自動で縮小されます）</label>
@@ -461,7 +464,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 </main>
 <script>
 const $ = id => document.getElementById(id);
-const TYPE_LABELS = {band:'バンド', band_support:'バンド(keyサポート)', solo_acoustic:'銀幕一楼ソロ弾き語り', solo:'銀幕一楼ソロ'};
+const TYPE_LABELS = {band:'バンド（フルメンバー）', band_support:'バンド（keyサポート）', solo_acoustic:'銀幕一楼ソロ弾き語り', solo:'銀幕一楼ソロ'};
 const DOW = ['日','月','火','水','木','金','土'];
 let entries = [];
 
@@ -512,7 +515,7 @@ function formEntry(){
   return { date:$('date').value, title:$('title').value.trim(), venue:$('venue').value.trim(),
     type:$('type').value, typeLabel:$('typeLabel').value.trim(),
     open:$('open').value.trim(), start:$('start').value.trim(),
-    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
+    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), lineup:$('lineup').value.trim(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
 }
 function preview(){
   const e = formEntry();
@@ -536,6 +539,7 @@ function preview2(e){
   if(e.open||e.start) rows.push('<div class="e-row"><dt>時間</dt><dd>'+[e.open?'OPEN '+e.open:'',e.start?'START '+e.start:''].filter(Boolean).join(' ／ ')+'</dd></div>');
   if((e.tickets||[]).length) rows.push('<div class="e-row"><dt>チケット</dt><dd>'+e.tickets.map(t=>'<span class="e-tk"><span>'+esc(t.name)+'</span><b>¥'+Number(t.price).toLocaleString()+'</b></span>').join('')+'</dd></div>');
   if(e.drink) rows.push('<div class="e-row"><dt>ドリンク</dt><dd>'+esc(e.drink)+'</dd></div>');
+  if(e.lineup) rows.push('<div class="e-row"><dt>出演</dt><dd style="white-space:pre-wrap">'+esc(e.lineup)+'</dd></div>');
   if(e.note) rows.push('<div class="e-row"><dt>備考</dt><dd style="white-space:pre-wrap">'+esc(e.note)+'</dd></div>');
   $('preview2').innerHTML = '<div class="e-ticket">'
     + '<div class="e-head"><span class="e-stub">ADMIT ONE</span><p class="e-date">'+dateStr+'</p><h3>'+esc(e.title||'タイトル')+'</h3></div>'
@@ -544,7 +548,7 @@ function preview2(e){
     + (e.link?'<span class="e-btn">チケット・詳細はこちら</span>':'')
     + '</div></div>';
 }
-['date','title','venue','open','start','drink','note','link','typeLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
+['date','title','venue','open','start','drink','lineup','note','link','typeLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
 $('type').addEventListener('change', ()=>{ $('typeLabelWrap').hidden = $('type').value!=='other'; preview(); });
 
 /* ---- 入力候補（過去の登録から） ---- */
@@ -627,6 +631,7 @@ function applyParsed(r){
   if(r.open) $('open').value = r.open;
   if(r.start) $('start').value = r.start;
   if(r.drink) $('drink').value = r.drink;
+  if(r.lineup) $('lineup').value = r.lineup;
   if(r.note) $('note').value = r.note;
   if(r.link) $('link').value = r.link;
   if(r.tickets && r.tickets.length){
@@ -706,7 +711,7 @@ async function refresh(){
 
 window.edit = id => {
   const e = entries.find(x=>x.id===id); if(!e) return;
-  ['date','title','venue','type','typeLabel','open','start','drink','note','link','publishAt'].forEach(k=>$(k).value=e[k]||'');
+  ['date','title','venue','type','typeLabel','open','start','drink','lineup','note','link','publishAt'].forEach(k=>$(k).value=e[k]||'');
   $('typeLabelWrap').hidden = e.type!=='other';
   $('tickets').innerHTML='';
   (e.tickets&&e.tickets.length ? e.tickets : [{name:'前売',price:''},{name:'当日',price:''}]).forEach(t=>ticketRow(t.name,t.price));

@@ -26,8 +26,8 @@
     <nav aria-label="メインメニュー">
       <ul>
         <li><a href="/schedule">SCHEDULE</a></li>
-        <li><a href="#news">NEWS</a></li>
-        <li><a href="#profile">PROFILE</a></li>
+        <li><a href="/news">NEWS</a></li>
+        <li><a href="/profile">PROFILE</a></li>
         <li><a href="#video">VIDEO</a></li>
         <li><a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE ↗</a></li>
         <li><a href="#contact">CONTACT</a></li>
@@ -59,6 +59,7 @@
   <section id="news">
     <div class="sec-head">
       <h2>NEWS</h2><span class="jp">ニュース</span>
+      <span class="sec-more"><a href="/news">すべてのニュース →</a></span>
     </div>
     <ul class="news-list" id="news-list"></ul>
   </section>
@@ -66,16 +67,28 @@
   <section id="profile">
     <div class="sec-head">
       <h2>PROFILE</h2><span class="jp">プロフィール</span>
+      <span class="sec-more"><a href="/profile">プロフィールを見る →</a></span>
     </div>
-    <div class="duo">
-      <div class="profile-text">
-        <p class="serif" style="font-size:1.05rem;font-weight:700">銀幕一楼とTIMECAFE</p>
-        <p>（ここにバンドのプロフィール文が入ります。結成の経緯、音楽性、メンバー紹介など。JSONではなくHTML直書きでOKな更新頻度の低いセクション。）</p>
-      </div>
-      <div id="video" class="video-wrap">
-        <iframe src="https://www.youtube.com/embed/videoseries?list=UUV7JGIIPOJY3vNpGuMR0LKA" title="銀幕一楼とTIMECAFE YouTube" loading="lazy" allowfullscreen></iframe>
-      </div>
+    <div class="profile-text">
+      <p class="serif" style="font-size:1.05rem;font-weight:700">銀幕一楼とTIMECAFE</p>
+      <p>（ここに短い紹介文が入ります。詳しいプロフィール・メンバー紹介は<a href="/profile">プロフィールページ</a>へ。）</p>
     </div>
+  </section>
+
+  <section id="video">
+    <div class="sec-head">
+      <h2>VIDEO</h2><span class="jp">ビデオ</span>
+    </div>
+    <a class="yt-banner" href="https://www.youtube.com/@timecafe089542" target="_blank" rel="noopener">
+      <span class="yt-play">▶</span>
+      <span class="yt-text">
+        <b>YouTubeチャンネルで映像を見る</b>
+        <small>MV・ライブ映像は公式チャンネルにて公開中</small>
+      </span>
+      <span class="yt-arrow">↗</span>
+    </a>
+  </section>
+
     <div class="contact-box" id="contact">
       <h2>CONTACT</h2>
       <p>出演依頼・お問い合わせはこちらから</p>

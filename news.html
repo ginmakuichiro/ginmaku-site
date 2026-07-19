@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEWS | 銀幕一楼とTIMECAFE</title>
+<meta name="description" content="銀幕一楼とTIMECAFEの最新ニュース・お知らせ。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NEWS | 銀幕一楼とTIMECAFE">
+<meta property="og:url" content="https://ginmakuichiro.net/news">
+<meta property="og:image" content="https://ginmakuichiro.net/img/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="site-title" href="/">銀幕一楼とTIMECAFE<small>OFFICIAL WEBSITE</small></a>
+    <nav aria-label="メインメニュー">
+      <ul>
+        <li><a href="/schedule">SCHEDULE</a></li>
+        <li><a href="/news" aria-current="page">NEWS</a></li>
+        <li><a href="/profile">PROFILE</a></li>
+        <li><a href="/#video">VIDEO</a></li>
+        <li><a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE ↗</a></li>
+        <li><a href="/#contact">CONTACT</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="news">
+    <div class="sec-head">
+      <h2>NEWS</h2><span class="jp">ニュース</span>
+    </div>
+    <ul class="news-list" id="news-list"></ul>
+  </section>
+</main>
+
+<footer>
+  <div class="sns">
+    <a href="https://x.com/Ginmaku_Jimu" target="_blank" rel="noopener">X (Twitter)</a>
+    <a href="https://www.youtube.com/@timecafe089542" target="_blank" rel="noopener">YouTube</a>
+    <a href="https://www.instagram.com/ginmakuichiro_official/" target="_blank" rel="noopener">Instagram</a>
+    <a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE</a>
+  </div>
+  © 2026 銀幕一楼とTIMECAFE
+</footer>
+
+<script src="/js/site.js"></script>
+<script>
+(async ()=>{
+  try{
+    const data = (await loadJson("/data/news.json")).sort((a,b)=>b.date.localeCompare(a.date));
+    document.getElementById("news-list").innerHTML = data.map(n=>`
+      <li class="news-item">
+        <time datetime="${n.date}">${n.date.replaceAll("-",".")}</time>
+        <span class="news-cat">${n.category}</span>
+        <span class="n-title">${n.link && n.link !== "#" ? `<a href="${n.link}">${n.title}</a>` : n.title}</span>
+      </li>`).join("") || '<li class="empty-note">お知らせはまだありません。</li>';
+  }catch(err){
+    console.error(err);
+    document.getElementById("news-list").innerHTML =
+      '<li class="news-item"><span class="n-title">ニュースを読み込めませんでした。</span></li>';
+  }
+})();
+</script>
+</body>
+</html>

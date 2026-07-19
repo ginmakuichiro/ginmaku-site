@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公演詳細 | 銀幕一楼とTIMECAFE</title>
+<meta name="description" content="銀幕一楼とTIMECAFE 公演詳細">
+<meta property="og:type" content="website">
+<meta property="og:title" content="公演詳細 | 銀幕一楼とTIMECAFE">
+<meta property="og:image" content="https://ginmakuichiro.net/img/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/site.css">
+<style>
+.event-hero{background:repeating-linear-gradient(90deg,var(--curtain) 0 42px,#6A1B21 42px 84px);padding:56px 20px 64px}
+.event-hero-inner{max-width:760px;margin:0 auto}
+.event-ticket{background:var(--screen);border-radius:6px;box-shadow:0 14px 34px rgba(0,0,0,.4);overflow:hidden}
+.et-head{background:var(--curtain-deep);color:var(--screen);padding:22px 28px;border-bottom:2px dashed var(--screen);position:relative}
+.et-head .date{font-family:'Shippori Mincho B1',serif;font-size:1.05rem;color:var(--gold);letter-spacing:.15em}
+.et-head h1{font-family:'Shippori Mincho B1',serif;font-size:1.6rem;line-height:1.4;margin-top:6px}
+.et-head .stub{position:absolute;top:12px;right:16px;font-size:.62rem;letter-spacing:.3em;color:var(--gold);font-weight:700}
+.et-body{padding:26px 28px 30px}
+.et-row{display:grid;grid-template-columns:110px 1fr;gap:6px 18px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
+.et-row dt{font-weight:700;font-size:.8rem;color:var(--ink-soft);letter-spacing:.15em;padding-top:2px}
+.et-row dd .tag{vertical-align:baseline}
+.et-tickets li{list-style:none;display:flex;justify-content:space-between;max-width:320px;padding:2px 0}
+.et-tickets .price{font-family:'Shippori Mincho B1',serif;font-weight:700}
+.et-actions{margin-top:24px;display:flex;gap:12px;flex-wrap:wrap}
+.et-note{white-space:pre-wrap}
+.back{display:inline-block;margin-top:26px;color:var(--screen);text-decoration:none;font-size:.85rem;letter-spacing:.1em}
+.back:hover{color:var(--gold)}
+.notfound{background:var(--screen);border-radius:6px;padding:40px 28px;text-align:center;font-family:'Shippori Mincho B1',serif}
+@media(max-width:600px){.et-row{grid-template-columns:1fr}.et-head h1{font-size:1.3rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="site-title" href="/">銀幕一楼とTIMECAFE<small>OFFICIAL WEBSITE</small></a>
+    <nav aria-label="メインメニュー">
+      <ul>
+        <li><a href="/schedule">SCHEDULE</a></li>
+        <li><a href="/#news">NEWS</a></li>
+        <li><a href="/#profile">PROFILE</a></li>
+        <li><a href="/#video">VIDEO</a></li>
+        <li><a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE ↗</a></li>
+        <li><a href="/#contact">CONTACT</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<div class="event-hero">
+  <div class="event-hero-inner" id="event"></div>
+</div>
+
+<footer>
+  <div class="sns">
+    <a href="https://x.com/Ginmaku_Jimu" target="_blank" rel="noopener">X (Twitter)</a>
+    <a href="https://www.youtube.com/@timecafe089542" target="_blank" rel="noopener">YouTube</a>
+    <a href="https://www.instagram.com/ginmakuichiro_official/" target="_blank" rel="noopener">Instagram</a>
+    <a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE</a>
+  </div>
+  © 2026 銀幕一楼とTIMECAFE
+</footer>
+
+<script src="/js/site.js"></script>
+<script>
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+(async ()=>{
+  const box = document.getElementById("event");
+  const id = new URLSearchParams(location.search).get("id");
+  let e = null;
+  try{
+    const data = await loadSchedule();
+    e = data.find(x => x.id === id);
+  }catch(err){ console.error(err); }
+
+  if(!e){
+    box.innerHTML = '<div class="notfound">公演が見つかりませんでした。<br><br><a href="/schedule">スケジュール一覧へ →</a></div>';
+    return;
+  }
+
+  document.title = `${e.date.replaceAll("-",".")} ${e.title} | 銀幕一楼とTIMECAFE`;
+  const d = parseDate(e.date);
+  const past = (()=>{ const t=new Date(); t.setHours(0,0,0,0); return d < t; })();
+  const tickets = ticketsOf(e);
+
+  box.innerHTML = `
+    <div class="event-ticket">
+      <div class="et-head">
+        <span class="stub">ADMIT ONE</span>
+        <p class="date">${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${DOW[d.getDay()]}曜日${past ? "（終了）" : ""}</p>
+        <h1>${esc(e.title)}</h1>
+      </div>
+      <div class="et-body">
+        <dl>
+          <div class="et-row"><dt>出演</dt><dd>${tagHtml(e)}</dd></div>
+          <div class="et-row"><dt>会場</dt><dd>${esc(e.venue)}</dd></div>
+          ${e.open || e.start ? `<div class="et-row"><dt>時間</dt><dd>${[e.open?`OPEN ${e.open}`:"",e.start?`START ${e.start}`:""].filter(Boolean).join(" ／ ")}</dd></div>` : ""}
+          ${tickets.length ? `<div class="et-row"><dt>チケット</dt><dd><ul class="et-tickets">${tickets.map(t=>`<li><span>${esc(t.name)}</span><span class="price">¥${Number(t.price).toLocaleString()}</span></li>`).join("")}</ul></dd></div>` : ""}
+          ${e.note ? `<div class="et-row"><dt>備考</dt><dd class="et-note">${esc(e.note)}</dd></div>` : ""}
+        </dl>
+        ${e.link ? `<div class="et-actions"><a class="btn-gold" href="${esc(e.link)}" target="_blank" rel="noopener">チケット・詳細はこちら</a></div>` : ""}
+      </div>
+    </div>
+    <a class="back" href="/schedule">← スケジュール一覧へ戻る</a>`;
+})();
+</script>
+</body>
+</html>

@@ -45,7 +45,7 @@ async function publicSchedule(env) {
   const now = Date.now();
   const list = (await load(env))
     .filter(e => !e.publishAt || new Date(e.publishAt).getTime() <= now)
-    .map(({ id, publishAt, ...rest }) => rest);
+    .map(({ publishAt, ...rest }) => rest);
   return json(list, 200, {
     'access-control-allow-origin': '*',
     'cache-control': 'public, max-age=60'

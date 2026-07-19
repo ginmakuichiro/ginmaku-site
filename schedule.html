@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCHEDULE | 銀幕一楼とTIMECAFE</title>
+<meta name="description" content="銀幕一楼とTIMECAFEのライブスケジュール。リスト・カレンダーで確認できます。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="SCHEDULE | 銀幕一楼とTIMECAFE">
+<meta property="og:url" content="https://ginmakuichiro.net/schedule">
+<meta property="og:image" content="https://ginmakuichiro.net/img/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="site-title" href="/">銀幕一楼とTIMECAFE<small>OFFICIAL WEBSITE</small></a>
+    <nav aria-label="メインメニュー">
+      <ul>
+        <li><a href="/schedule" aria-current="page">SCHEDULE</a></li>
+        <li><a href="/#news">NEWS</a></li>
+        <li><a href="/#profile">PROFILE</a></li>
+        <li><a href="/#video">VIDEO</a></li>
+        <li><a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE ↗</a></li>
+        <li><a href="/#contact">CONTACT</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="schedule">
+    <div class="sec-head">
+      <h2>SCHEDULE</h2><span class="jp">スケジュール</span>
+    </div>
+    <div class="view-toggle" role="tablist" aria-label="表示切替">
+      <button id="view-list" role="tab" aria-selected="true">リスト</button>
+      <button id="view-cal" role="tab" aria-selected="false">カレンダー</button>
+    </div>
+    <div id="sched-view-list">
+      <ul class="sched-list" id="sched-upcoming"></ul>
+      <div class="sched-toggle">
+        <button id="toggle-past" aria-expanded="false">終了した公演を見る ▾</button>
+      </div>
+      <ul class="sched-list" id="sched-past" hidden></ul>
+    </div>
+    <div id="sched-view-cal" hidden>
+      <div class="cal-head">
+        <button id="cal-prev" aria-label="前の月">◀</button>
+        <p class="cal-title serif" id="cal-title"></p>
+        <button id="cal-next" aria-label="次の月">▶</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <ul class="sched-list" id="cal-month-list"></ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="sns">
+    <a href="https://x.com/Ginmaku_Jimu" target="_blank" rel="noopener">X (Twitter)</a>
+    <a href="https://www.youtube.com/@timecafe089542" target="_blank" rel="noopener">YouTube</a>
+    <a href="https://www.instagram.com/ginmakuichiro_official/" target="_blank" rel="noopener">Instagram</a>
+    <a href="https://timecafe.thebase.in" target="_blank" rel="noopener">STORE</a>
+  </div>
+  © 2026 銀幕一楼とTIMECAFE
+</footer>
+
+<script src="/js/site.js"></script>
+<script>
+let calYear, calMonth, scheduleData = [];
+
+function renderList(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = scheduleData.filter(e => parseDate(e.date) >= today).sort((a,b)=>a.date.localeCompare(b.date));
+  const past = scheduleData.filter(e => parseDate(e.date) < today).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById("sched-upcoming").innerHTML =
+    upcoming.length ? upcoming.map(e=>schedItemHtml(e)).join("") : '<li class="empty-note">現在予定されている公演はありません。</li>';
+  document.getElementById("sched-past").innerHTML = past.map(e=>schedItemHtml(e,"past")).join("");
+}
+
+function calEventHtml(e, today){
+  const cls = (isBandType(e.type) ? "band" : "solo") + (parseDate(e.date) < today ? " done" : "");
+  const url = eventUrl(e);
+  return url
+    ? `<a class="cal-ev ${cls}" href="${url}" title="${e.title}／${e.venue}">${e.title}</a>`
+    : `<span class="cal-ev ${cls}" title="${e.title}／${e.venue}">${e.title}</span>`;
+}
+
+function renderCalendar(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  document.getElementById("cal-title").textContent = `${calYear}年${calMonth+1}月`;
+
+  const first = new Date(calYear, calMonth, 1);
+  const start = new Date(first); start.setDate(1 - first.getDay());
+  const byDate = {};
+  for(const e of scheduleData) (byDate[e.date] ||= []).push(e);
+
+  let html = DOW.map((w,i)=>`<div class="cal-dow${i===0?" sun":""}">${w}</div>`).join("");
+  const d = new Date(start);
+  do{
+    for(let i=0;i<7;i++){
+      const key = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const other = d.getMonth() !== calMonth ? " other" : "";
+      const isToday = d.getTime() === today.getTime() ? " today" : "";
+      const evs = (byDate[key]||[]).map(e=>calEventHtml(e, today)).join("");
+      html += `<div class="cal-cell${other}${isToday}"><span class="n">${d.getDate()}</span>${evs}</div>`;
+      d.setDate(d.getDate()+1);
+    }
+  }while(d.getMonth() === calMonth);
+  document.getElementById("cal-grid").innerHTML = html;
+
+  const monthEvents = scheduleData
+    .filter(e => { const dd = parseDate(e.date); return dd.getFullYear()===calYear && dd.getMonth()===calMonth; })
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById("cal-month-list").innerHTML =
+    monthEvents.length ? monthEvents.map(e=>schedItemHtml(e, parseDate(e.date) < today ? "past" : "")).join("")
+                       : '<li class="empty-note">この月の公演はありません。</li>';
+}
+
+document.getElementById("cal-prev").addEventListener("click", ()=>{ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); });
+document.getElementById("cal-next").addEventListener("click", ()=>{ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); });
+
+document.getElementById("toggle-past").addEventListener("click", function(){
+  const past = document.getElementById("sched-past");
+  const open = past.hidden;
+  past.hidden = !open;
+  this.setAttribute("aria-expanded", String(open));
+  this.textContent = open ? "終了した公演を閉じる ▴" : "終了した公演を見る ▾";
+});
+
+function setView(mode){
+  const list = mode === "list";
+  document.getElementById("sched-view-list").hidden = !list;
+  document.getElementById("sched-view-cal").hidden = list;
+  document.getElementById("view-list").setAttribute("aria-selected", String(list));
+  document.getElementById("view-cal").setAttribute("aria-selected", String(!list));
+  if(!list) renderCalendar();
+}
+document.getElementById("view-list").addEventListener("click", ()=>setView("list"));
+document.getElementById("view-cal").addEventListener("click", ()=>setView("cal"));
+
+(async ()=>{
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  try{
+    scheduleData = await loadSchedule();
+    renderList();
+  }catch(err){
+    console.error(err);
+    document.getElementById("sched-upcoming").innerHTML =
+      '<li class="empty-note">スケジュールを読み込めませんでした。時間をおいて再度お試しください。</li>';
+  }
+})();
+</script>
+</body>
+</html>

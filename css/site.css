@@ -1,0 +1,313 @@
+:root{
+  --curtain:#7C2128;      /* 緞帳の赤 */
+  --curtain-deep:#241012; /* 場内の闇 */
+  --screen:#F4EDDD;       /* スクリーンの生成り */
+  --screen-dim:#EAE0C9;
+  --gold:#B98F24;         /* 座席番号の金 */
+  --ink:#26201A;
+  --ink-soft:#7C7263;
+  --line:#D8CCB2;
+  --radius:4px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  background:var(--screen);
+  color:var(--ink);
+  line-height:1.8;
+  font-size:15px;
+}
+.serif{font-family:'Shippori Mincho B1',serif}
+
+/* ---------- header ---------- */
+header{
+  background:var(--curtain-deep);
+  color:var(--screen);
+  position:sticky;top:0;z-index:50;
+  border-bottom:3px double var(--gold);
+}
+.header-inner{
+  max-width:1040px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;gap:16px;flex-wrap:wrap;
+}
+.site-title{
+  font-family:'Shippori Mincho B1',serif;
+  font-weight:800;font-size:1.25rem;letter-spacing:.08em;
+  color:var(--screen);text-decoration:none;white-space:nowrap;
+}
+.site-title small{
+  display:block;font-size:.6rem;font-weight:500;
+  letter-spacing:.42em;color:var(--gold);margin-top:2px;
+}
+nav ul{display:flex;gap:4px;list-style:none;flex-wrap:wrap}
+nav a{
+  color:var(--screen);text-decoration:none;
+  font-size:.78rem;letter-spacing:.14em;font-weight:500;
+  padding:6px 10px;border-radius:var(--radius);
+  transition:color .2s,background .2s;
+}
+nav a:hover,nav a:focus-visible{color:var(--gold);background:rgba(185,143,36,.12)}
+a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- artist photo : 銀幕 ---------- */
+.screen-visual{
+  background:var(--curtain-deep);
+  padding:30px 20px 0;
+}
+.screen-visual img{
+  display:block;
+  width:100%;max-width:960px;height:auto;
+  margin:0 auto -46px;
+  position:relative;z-index:5;
+  border:1px solid var(--gold);
+  outline:8px solid #17090A;
+  outline-offset:-1px;
+  box-shadow:0 0 60px rgba(185,143,36,.18), 0 18px 40px rgba(0,0,0,.5);
+}
+
+/* ---------- hero : NOW SHOWING ---------- */
+.hero{
+  background:
+    repeating-linear-gradient(90deg,
+      var(--curtain) 0 42px,
+      #6A1B21 42px 84px);
+  padding:92px 20px 72px;
+  position:relative;
+}
+.hero::after{ /* 緞帳の裾の影 */
+  content:"";position:absolute;left:0;right:0;bottom:0;height:26px;
+  background:radial-gradient(ellipse at 50% 0,rgba(0,0,0,.35),transparent 70%);
+}
+.hero-inner{max-width:760px;margin:0 auto}
+.hero-label{
+  text-align:center;color:var(--screen);
+  letter-spacing:.5em;font-size:.8rem;font-weight:700;
+  margin-bottom:18px;text-indent:.5em;
+}
+.hero-label::before,.hero-label::after{content:"─";color:var(--gold);letter-spacing:0;margin:0 12px}
+
+/* 半券チケット */
+.ticket{
+  background:var(--screen);
+  border-radius:6px;
+  display:grid;grid-template-columns:150px 1fr;
+  box-shadow:0 14px 34px rgba(0,0,0,.4);
+  position:relative;overflow:hidden;
+}
+.ticket-date{
+  background:var(--curtain-deep);color:var(--screen);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:26px 10px;gap:2px;
+  border-right:2px dashed var(--screen); /* ミシン目 */
+}
+.ticket-date .month{font-size:.75rem;letter-spacing:.25em;color:var(--gold)}
+.ticket-date .day{font-family:'Shippori Mincho B1',serif;font-size:3.1rem;font-weight:800;line-height:1}
+.ticket-date .dow{font-size:.75rem;letter-spacing:.2em}
+.ticket-body{padding:24px 28px 22px}
+.ticket-body .tag{margin-bottom:8px}
+.ticket-title{
+  font-family:'Shippori Mincho B1',serif;
+  font-size:1.45rem;font-weight:700;line-height:1.4;margin-bottom:10px;
+}
+.ticket-meta{font-size:.85rem;color:var(--ink-soft);display:flex;gap:18px;flex-wrap:wrap}
+.ticket-meta b{color:var(--ink);font-weight:700}
+.ticket-stub-note{
+  position:absolute;top:10px;right:14px;
+  font-size:.62rem;letter-spacing:.3em;color:var(--gold);font-weight:700;
+}
+.hero-empty{
+  background:var(--screen);border-radius:6px;padding:34px 28px;text-align:center;
+  box-shadow:0 14px 34px rgba(0,0,0,.4);
+  font-family:'Shippori Mincho B1',serif;font-size:1.05rem;
+}
+
+/* ---------- 共通セクション ---------- */
+main{max-width:1040px;margin:0 auto;padding:0 20px 60px}
+section{padding-top:64px}
+.sec-head{
+  display:flex;align-items:baseline;gap:14px;
+  border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px;
+}
+.sec-head h2{
+  font-family:'Shippori Mincho B1',serif;
+  font-size:1.5rem;font-weight:800;letter-spacing:.12em;
+}
+.sec-head .jp{font-size:.72rem;color:var(--ink-soft);letter-spacing:.3em}
+.sec-more{margin-left:auto;font-size:.75rem;letter-spacing:.15em}
+.sec-more a{color:var(--curtain);text-decoration:none;font-weight:700}
+.sec-more a:hover{text-decoration:underline}
+
+/* ---------- schedule ---------- */
+.sched-list{list-style:none}
+.sched-item{
+  display:grid;
+  grid-template-columns:118px 1fr auto;
+  gap:0 22px;align-items:center;
+  padding:18px 6px;
+  border-bottom:1px solid var(--line);
+}
+.sched-item:hover{background:var(--screen-dim)}
+.s-date{
+  font-family:'Shippori Mincho B1',serif;
+  display:flex;align-items:baseline;gap:6px;
+  border-right:1px dashed var(--line);padding-right:16px;
+}
+.s-date .d{font-size:1.7rem;font-weight:800;line-height:1}
+.s-date .m{font-size:.8rem;color:var(--ink-soft)}
+.s-date .w{font-size:.72rem;color:var(--curtain);font-weight:700}
+.s-main .title{font-weight:700;font-size:1rem;line-height:1.5}
+.s-main .venue{font-size:.82rem;color:var(--ink-soft);margin-top:2px}
+.s-main .detail,.ticket-body .detail{font-size:.78rem;color:var(--ink-soft);margin-top:4px;letter-spacing:.02em}
+.ticket-body .detail{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.tag{
+  display:inline-block;font-size:.66rem;font-weight:700;letter-spacing:.12em;
+  padding:2px 10px;border-radius:2px;vertical-align:middle;
+}
+.tag-band{background:var(--curtain);color:var(--screen)}
+.tag-solo{background:transparent;color:var(--curtain);border:1px solid var(--curtain)}
+.s-link a{
+  font-size:.78rem;color:var(--ink);text-decoration:none;font-weight:700;
+  border:1px solid var(--ink);border-radius:2px;padding:6px 14px;
+  letter-spacing:.1em;transition:background .2s,color .2s;white-space:nowrap;
+}
+.s-link a:hover{background:var(--ink);color:var(--screen)}
+.sched-toggle{
+  margin-top:18px;text-align:center;
+}
+.sched-toggle button{
+  font-family:inherit;font-size:.78rem;letter-spacing:.15em;font-weight:700;
+  background:none;border:1px solid var(--ink-soft);color:var(--ink-soft);
+  padding:8px 22px;border-radius:2px;cursor:pointer;
+}
+.sched-toggle button:hover{border-color:var(--ink);color:var(--ink)}
+.past .s-date,.past .s-main{opacity:.55}
+.empty-note{padding:26px 6px;color:var(--ink-soft);font-size:.9rem}
+
+/* ---------- schedule : view toggle & calendar ---------- */
+.view-toggle{display:flex;gap:0;margin:14px 0 6px}
+.view-toggle button{
+  font-family:inherit;font-size:.75rem;letter-spacing:.15em;font-weight:700;
+  background:none;border:1px solid var(--ink-soft);color:var(--ink-soft);
+  padding:7px 20px;cursor:pointer;
+}
+.view-toggle button:first-child{border-radius:2px 0 0 2px}
+.view-toggle button:last-child{border-radius:0 2px 2px 0;border-left:none}
+.view-toggle button[aria-selected="true"]{
+  background:var(--ink);border-color:var(--ink);color:var(--screen);
+}
+.cal-head{
+  display:flex;align-items:center;justify-content:center;gap:22px;
+  margin:20px 0 12px;
+}
+.cal-title{font-size:1.2rem;font-weight:800;letter-spacing:.12em;min-width:9em;text-align:center}
+.cal-head button{
+  font-family:inherit;font-size:.8rem;background:none;cursor:pointer;
+  border:1px solid var(--ink-soft);color:var(--ink-soft);border-radius:2px;
+  padding:6px 14px;
+}
+.cal-head button:hover{border-color:var(--ink);color:var(--ink)}
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  border-top:1px solid var(--line);border-left:1px solid var(--line);
+}
+.cal-dow{
+  text-align:center;font-size:.68rem;font-weight:700;letter-spacing:.15em;
+  padding:6px 0;color:var(--ink-soft);
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--screen-dim);
+}
+.cal-dow.sun{color:var(--curtain)}
+.cal-cell{
+  min-height:74px;padding:4px;font-size:.72rem;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+.cal-cell.other{background:var(--screen-dim);opacity:.5}
+.cal-cell .n{font-family:'Shippori Mincho B1',serif;font-weight:700}
+.cal-cell.today .n{
+  display:inline-block;background:var(--gold);color:var(--screen);
+  border-radius:50%;width:1.7em;height:1.7em;line-height:1.7em;text-align:center;
+}
+.cal-ev{
+  display:block;margin-top:3px;padding:1px 4px;border-radius:2px;
+  font-size:.62rem;font-weight:700;line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-decoration:none;
+}
+.cal-ev.band{background:var(--curtain);color:var(--screen)}
+.cal-ev.solo{border:1px solid var(--curtain);color:var(--curtain)}
+.cal-ev.solo::before{content:"◆ ";font-size:.55rem}
+.cal-ev.done{opacity:.45}
+#cal-month-list{margin-top:20px}
+@media (max-width:720px){
+  .cal-cell{min-height:56px;padding:2px;font-size:.66rem}
+  .cal-ev{font-size:.55rem;padding:1px 2px}
+}
+
+/* ---------- news ---------- */
+.news-list{list-style:none}
+.news-item{
+  display:grid;grid-template-columns:110px 84px 1fr;gap:16px;align-items:center;
+  padding:15px 6px;border-bottom:1px solid var(--line);
+}
+.news-item time{font-size:.8rem;color:var(--ink-soft);font-family:'Shippori Mincho B1',serif}
+.news-cat{
+  font-size:.64rem;font-weight:700;letter-spacing:.15em;text-align:center;
+  border:1px solid var(--gold);color:var(--gold);padding:2px 0;border-radius:2px;
+}
+.news-item .n-title{font-weight:500}
+.news-item a{color:var(--ink);text-decoration:none}
+.news-item a:hover{color:var(--curtain);text-decoration:underline}
+
+/* ---------- profile / video / contact ---------- */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.profile-text{font-size:.92rem}
+.profile-text p+p{margin-top:12px}
+.video-wrap{position:relative;padding-top:56.25%;background:var(--curtain-deep);border-radius:var(--radius);overflow:hidden}
+.video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.contact-box{
+  margin-top:64px;
+  background:var(--curtain-deep);color:var(--screen);
+  border-radius:6px;padding:36px 28px;text-align:center;
+}
+.contact-box h2{font-family:'Shippori Mincho B1',serif;letter-spacing:.2em;font-size:1.2rem;margin-bottom:10px}
+.contact-box p{font-size:.85rem;color:#CDbfae;margin-bottom:18px}
+.btn-gold{
+  display:inline-block;background:var(--gold);color:var(--curtain-deep);
+  font-weight:700;letter-spacing:.15em;font-size:.85rem;
+  padding:10px 32px;border-radius:2px;text-decoration:none;
+}
+.btn-gold:hover{filter:brightness(1.1)}
+
+/* ---------- footer ---------- */
+footer{
+  background:var(--curtain-deep);color:var(--ink-soft);
+  text-align:center;padding:26px 20px;font-size:.72rem;letter-spacing:.1em;
+  border-top:3px double var(--gold);margin-top:70px;
+}
+footer .sns{margin-bottom:10px;display:flex;gap:22px;justify-content:center}
+footer .sns a{color:var(--screen);text-decoration:none;letter-spacing:.15em}
+footer .sns a:hover{color:var(--gold)}
+
+/* ---------- responsive ---------- */
+@media (max-width:720px){
+  .ticket{grid-template-columns:104px 1fr}
+  .ticket-body{padding:18px 18px 16px}
+  .ticket-title{font-size:1.15rem}
+  .sched-item{grid-template-columns:92px 1fr;grid-template-rows:auto auto}
+  .s-link{grid-column:2;justify-self:start;margin-top:8px}
+  .news-item{grid-template-columns:84px 1fr;grid-template-rows:auto auto}
+  .news-cat{grid-row:1;grid-column:2;justify-self:start;padding:2px 12px}
+  .news-item time{grid-row:1}
+  .news-item .n-title{grid-column:1/3}
+  .duo{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* ---------- schedule links ---------- */
+.title-link{color:inherit;text-decoration:none}
+.title-link:hover{color:var(--curtain);text-decoration:underline}
+.ticket-link{display:block;text-decoration:none;color:inherit}
+.ticket-link:hover .ticket{box-shadow:0 18px 40px rgba(0,0,0,.5)}

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>銀幕一楼とTIMECAFE | OFFICIAL SITE</title>
+<meta name="description" content="銀幕一楼とTIMECAFE オフィシャルサイト。ライブスケジュール・ニュース・プロフィール。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --curtain:#7C2128;      /* 緞帳の赤 */
+  --curtain-deep:#241012; /* 場内の闇 */
+  --screen:#F4EDDD;       /* スクリーンの生成り */
+  --screen-dim:#EAE0C9;
+  --gold:#B98F24;         /* 座席番号の金 */
+  --ink:#26201A;
+  --ink-soft:#7C7263;
+  --line:#D8CCB2;
+  --radius:4px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Zen Kaku Gothic New',sans-serif;
+  background:var(--screen);
+  color:var(--ink);
+  line-height:1.8;
+  font-size:15px;
+}
+.serif{font-family:'Shippori Mincho B1',serif}
+
+/* ---------- header ---------- */
+header{
+  background:var(--curtain-deep);
+  color:var(--screen);
+  position:sticky;top:0;z-index:50;
+  border-bottom:3px double var(--gold);
+}
+.header-inner{
+  max-width:1040px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;gap:16px;flex-wrap:wrap;
+}
+.site-title{
+  font-family:'Shippori Mincho B1',serif;
+  font-weight:800;font-size:1.25rem;letter-spacing:.08em;
+  color:var(--screen);text-decoration:none;white-space:nowrap;
+}
+.site-title small{
+  display:block;font-size:.6rem;font-weight:500;
+  letter-spacing:.42em;color:var(--gold);margin-top:2px;
+}
+nav ul{display:flex;gap:4px;list-style:none;flex-wrap:wrap}
+nav a{
+  color:var(--screen);text-decoration:none;
+  font-size:.78rem;letter-spacing:.14em;font-weight:500;
+  padding:6px 10px;border-radius:var(--radius);
+  transition:color .2s,background .2s;
+}
+nav a:hover,nav a:focus-visible{color:var(--gold);background:rgba(185,143,36,.12)}
+a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- artist photo : 銀幕 ---------- */
+.screen-visual{
+  background:var(--curtain-deep);
+  padding:30px 20px 0;
+}
+.screen-visual img{
+  display:block;
+  width:100%;max-width:960px;height:auto;
+  margin:0 auto -46px;
+  position:relative;z-index:5;
+  border:1px solid var(--gold);
+  outline:8px solid #17090A;
+  outline-offset:-1px;
+  box-shadow:0 0 60px rgba(185,143,36,.18), 0 18px 40px rgba(0,0,0,.5);
+}
+
+/* ---------- hero : NOW SHOWING ---------- */
+.hero{
+  background:
+    repeating-linear-gradient(90deg,
+      var(--curtain) 0 42px,
+      #6A1B21 42px 84px);
+  padding:92px 20px 72px;
+  position:relative;
+}
+.hero::after{ /* 緞帳の裾の影 */
+  content:"";position:absolute;left:0;right:0;bottom:0;height:26px;
+  background:radial-gradient(ellipse at 50% 0,rgba(0,0,0,.35),transparent 70%);
+}
+.hero-inner{max-width:760px;margin:0 auto}
+.hero-label{
+  text-align:center;color:var(--screen);
+  letter-spacing:.5em;font-size:.8rem;font-weight:700;
+  margin-bottom:18px;text-indent:.5em;
+}
+.hero-label::before,.hero-label::after{content:"─";color:var(--gold);letter-spacing:0;margin:0 12px}
+
+/* 半券チケット */
+.ticket{
+  background:var(--screen);
+  border-radius:6px;
+  display:grid;grid-template-columns:150px 1fr;
+  box-shadow:0 14px 34px rgba(0,0,0,.4);
+  position:relative;overflow:hidden;
+}
+.ticket-date{
+  background:var(--curtain-deep);color:var(--screen);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:26px 10px;gap:2px;
+  border-right:2px dashed var(--screen); /* ミシン目 */
+}
+.ticket-date .month{font-size:.75rem;letter-spacing:.25em;color:var(--gold)}
+.ticket-date .day{font-family:'Shippori Mincho B1',serif;font-size:3.1rem;font-weight:800;line-height:1}
+.ticket-date .dow{font-size:.75rem;letter-spacing:.2em}
+.ticket-body{padding:24px 28px 22px}
+.ticket-body .tag{margin-bottom:8px}
+.ticket-title{
+  font-family:'Shippori Mincho B1',serif;
+  font-size:1.45rem;font-weight:700;line-height:1.4;margin-bottom:10px;
+}
+.ticket-meta{font-size:.85rem;color:var(--ink-soft);display:flex;gap:18px;flex-wrap:wrap}
+.ticket-meta b{color:var(--ink);font-weight:700}
+.ticket-stub-note{
+  position:absolute;top:10px;right:14px;
+  font-size:.62rem;letter-spacing:.3em;color:var(--gold);font-weight:700;
+}
+.hero-empty{
+  background:var(--screen);border-radius:6px;padding:34px 28px;text-align:center;
+  box-shadow:0 14px 34px rgba(0,0,0,.4);
+  font-family:'Shippori Mincho B1',serif;font-size:1.05rem;
+}
+
+/* ---------- 共通セクション ---------- */
+main{max-width:1040px;margin:0 auto;padding:0 20px 60px}
+section{padding-top:64px}
+.sec-head{
+  display:flex;align-items:baseline;gap:14px;
+  border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px;
+}
+.sec-head h2{
+  font-family:'Shippori Mincho B1',serif;
+  font-size:1.5rem;font-weight:800;letter-spacing:.12em;
+}
+.sec-head .jp{font-size:.72rem;color:var(--ink-soft);letter-spacing:.3em}
+.sec-more{margin-left:auto;font-size:.75rem;letter-spacing:.15em}
+.sec-more a{color:var(--curtain);text-decoration:none;font-weight:700}
+.sec-more a:hover{text-decoration:underline}
+
+/* ---------- schedule ---------- */
+.sched-list{list-style:none}
+.sched-item{
+  display:grid;
+  grid-template-columns:118px 1fr auto;
+  gap:0 22px;align-items:center;
+  padding:18px 6px;
+  border-bottom:1px solid var(--line);
+}
+.sched-item:hover{background:var(--screen-dim)}
+.s-date{
+  font-family:'Shippori Mincho B1',serif;
+  display:flex;align-items:baseline;gap:6px;
+  border-right:1px dashed var(--line);padding-right:16px;
+}
+.s-date .d{font-size:1.7rem;font-weight:800;line-height:1}
+.s-date .m{font-size:.8rem;color:var(--ink-soft)}
+.s-date .w{font-size:.72rem;color:var(--curtain);font-weight:700}
+.s-main .title{font-weight:700;font-size:1rem;line-height:1.5}
+.s-main .venue{font-size:.82rem;color:var(--ink-soft);margin-top:2px}
+.tag{
+  display:inline-block;font-size:.66rem;font-weight:700;letter-spacing:.12em;
+  padding:2px 10px;border-radius:2px;vertical-align:middle;
+}
+.tag-band{background:var(--curtain);color:var(--screen)}
+.tag-solo{background:transparent;color:var(--curtain);border:1px solid var(--curtain)}
+.s-link a{
+  font-size:.78rem;color:var(--ink);text-decoration:none;font-weight:700;
+  border:1px solid var(--ink);border-radius:2px;padding:6px 14px;
+  letter-spacing:.1em;transition:background .2s,color .2s;white-space:nowrap;
+}
+.s-link a:hover{background:var(--ink);color:var(--screen)}
+.sched-toggle{
+  margin-top:18px;text-align:center;
+}
+.sched-toggle button{
+  font-family:inherit;font-size:.78rem;letter-spacing:.15em;font-weight:700;
+  background:none;border:1px solid var(--ink-soft);color:var(--ink-soft);
+  padding:8px 22px;border-radius:2px;cursor:pointer;
+}
+.sched-toggle button:hover{border-color:var(--ink);color:var(--ink)}
+.past .s-date,.past .s-main{opacity:.55}
+.empty-note{padding:26px 6px;color:var(--ink-soft);font-size:.9rem}
+
+/* ---------- schedule : view toggle & calendar ---------- */
+.view-toggle{display:flex;gap:0;margin:14px 0 6px}
+.view-toggle button{
+  font-family:inherit;font-size:.75rem;letter-spacing:.15em;font-weight:700;
+  background:none;border:1px solid var(--ink-soft);color:var(--ink-soft);
+  padding:7px 20px;cursor:pointer;
+}
+.view-toggle button:first-child{border-radius:2px 0 0 2px}
+.view-toggle button:last-child{border-radius:0 2px 2px 0;border-left:none}
+.view-toggle button[aria-selected="true"]{
+  background:var(--ink);border-color:var(--ink);color:var(--screen);
+}
+.cal-head{
+  display:flex;align-items:center;justify-content:center;gap:22px;
+  margin:20px 0 12px;
+}
+.cal-title{font-size:1.2rem;font-weight:800;letter-spacing:.12em;min-width:9em;text-align:center}
+.cal-head button{
+  font-family:inherit;font-size:.8rem;background:none;cursor:pointer;
+  border:1px solid var(--ink-soft);color:var(--ink-soft);border-radius:2px;
+  padding:6px 14px;
+}
+.cal-head button:hover{border-color:var(--ink);color:var(--ink)}
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  border-top:1px solid var(--line);border-left:1px solid var(--line);
+}
+.cal-dow{
+  text-align:center;font-size:.68rem;font-weight:700;letter-spacing:.15em;
+  padding:6px 0;color:var(--ink-soft);
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--screen-dim);
+}
+.cal-dow.sun{color:var(--curtain)}
+.cal-cell{
+  min-height:74px;padding:4px;font-size:.72rem;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+.cal-cell.other{background:var(--screen-dim);opacity:.5}
+.cal-cell .n{font-family:'Shippori Mincho B1',serif;font-weight:700}
+.cal-cell.today .n{
+  display:inline-block;background:var(--gold);color:var(--screen);
+  border-radius:50%;width:1.7em;height:1.7em;line-height:1.7em;text-align:center;
+}
+.cal-ev{
+  display:block;margin-top:3px;padding:1px 4px;border-radius:2px;
+  font-size:.62rem;font-weight:700;line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-decoration:none;
+}
+.cal-ev.band{background:var(--curtain);color:var(--screen)}
+.cal-ev.solo{border:1px solid var(--curtain);color:var(--curtain)}
+.cal-ev.solo::before{content:"◆ ";font-size:.55rem}
+.cal-ev.done{opacity:.45}
+#cal-month-list{margin-top:20px}
+@media (max-width:720px){
+  .cal-cell{min-height:56px;padding:2px;font-size:.66rem}
+  .cal-ev{font-size:.55rem;padding:1px 2px}
+}
+
+/* ---------- news ---------- */
+.news-list{list-style:none}
+.news-item{
+  display:grid;grid-template-columns:110px 84px 1fr;gap:16px;align-items:center;
+  padding:15px 6px;border-bottom:1px solid var(--line);
+}
+.news-item time{font-size:.8rem;color:var(--ink-soft);font-family:'Shippori Mincho B1',serif}
+.news-cat{
+  font-size:.64rem;font-weight:700;letter-spacing:.15em;text-align:center;
+  border:1px solid var(--gold);color:var(--gold);padding:2px 0;border-radius:2px;
+}
+.news-item .n-title{font-weight:500}
+.news-item a{color:var(--ink);text-decoration:none}
+.news-item a:hover{color:var(--curtain);text-decoration:underline}
+
+/* ---------- profile / video / contact ---------- */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.profile-text{font-size:.92rem}
+.profile-text p+p{margin-top:12px}
+.video-wrap{position:relative;padding-top:56.25%;background:var(--curtain-deep);border-radius:var(--radius);overflow:hidden}
+.video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.contact-box{
+  margin-top:64px;
+  background:var(--curtain-deep);color:var(--screen);
+  border-radius:6px;padding:36px 28px;text-align:center;
+}
+.contact-box h2{font-family:'Shippori Mincho B1',serif;letter-spacing:.2em;font-size:1.2rem;margin-bottom:10px}
+.contact-box p{font-size:.85rem;color:#CDbfae;margin-bottom:18px}
+.btn-gold{
+  display:inline-block;background:var(--gold);color:var(--curtain-deep);
+  font-weight:700;letter-spacing:.15em;font-size:.85rem;
+  padding:10px 32px;border-radius:2px;text-decoration:none;
+}
+.btn-gold:hover{filter:brightness(1.1)}
+
+/* ---------- footer ---------- */
+footer{
+  background:var(--curtain-deep);color:var(--ink-soft);
+  text-align:center;padding:26px 20px;font-size:.72rem;letter-spacing:.1em;
+  border-top:3px double var(--gold);margin-top:70px;
+}
+footer .sns{margin-bottom:10px;display:flex;gap:22px;justify-content:center}
+footer .sns a{color:var(--screen);text-decoration:none;letter-spacing:.15em}
+footer .sns a:hover{color:var(--gold)}
+
+/* ---------- responsive ---------- */
+@media (max-width:720px){
+  .ticket{grid-template-columns:104px 1fr}
+  .ticket-body{padding:18px 18px 16px}
+  .ticket-title{font-size:1.15rem}
+  .sched-item{grid-template-columns:92px 1fr;grid-template-rows:auto auto}
+  .s-link{grid-column:2;justify-self:start;margin-top:8px}
+  .news-item{grid-template-columns:84px 1fr;grid-template-rows:auto auto}
+  .news-cat{grid-row:1;grid-column:2;justify-self:start;padding:2px 12px}
+  .news-item time{grid-row:1}
+  .news-item .n-title{grid-column:1/3}
+  .duo{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="site-title" href="#top">銀幕一楼とTIMECAFE<small>GINMAKU ICHIRO &amp; TIMECAFE</small></a>
+    <nav aria-label="メインメニュー">
+      <ul>
+        <li><a href="#schedule">SCHEDULE</a></li>
+        <li><a href="#news">NEWS</a></li>
+        <li><a href="#profile">PROFILE</a></li>
+        <li><a href="#video">VIDEO</a></li>
+        <li><a href="#contact">CONTACT</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<div class="screen-visual">
+  <img src="img/artist-photo.jpeg" alt="銀幕一楼とTIMECAFE アーティスト写真 2024" width="2048" height="1365">
+</div>
+
+<div class="hero" id="top">
+  <div class="hero-inner">
+    <p class="hero-label serif">NOW SHOWING ── 次回公演</p>
+    <div id="hero-ticket"></div>
+  </div>
+</div>
+
+<main>
+  <section id="schedule">
+    <div class="sec-head">
+      <h2>SCHEDULE</h2><span class="jp">スケジュール</span>
+    </div>
+    <div class="view-toggle" role="tablist" aria-label="表示切替">
+      <button id="view-list" role="tab" aria-selected="true">リスト</button>
+      <button id="view-cal" role="tab" aria-selected="false">カレンダー</button>
+    </div>
+    <div id="sched-view-list">
+      <ul class="sched-list" id="sched-upcoming"></ul>
+      <div class="sched-toggle">
+        <button id="toggle-past" aria-expanded="false">終了した公演を見る ▾</button>
+      </div>
+      <ul class="sched-list" id="sched-past" hidden></ul>
+    </div>
+    <div id="sched-view-cal" hidden>
+      <div class="cal-head">
+        <button id="cal-prev" aria-label="前の月">◀</button>
+        <p class="cal-title serif" id="cal-title"></p>
+        <button id="cal-next" aria-label="次の月">▶</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <ul class="sched-list" id="cal-month-list"></ul>
+    </div>
+  </section>
+
+  <section id="news">
+    <div class="sec-head">
+      <h2>NEWS</h2><span class="jp">ニュース</span>
+    </div>
+    <ul class="news-list" id="news-list"></ul>
+  </section>
+
+  <section id="profile">
+    <div class="sec-head">
+      <h2>PROFILE</h2><span class="jp">プロフィール</span>
+    </div>
+    <div class="duo">
+      <div class="profile-text">
+        <p class="serif" style="font-size:1.05rem;font-weight:700">銀幕一楼とTIMECAFE</p>
+        <p>（ここにバンドのプロフィール文が入ります。結成の経緯、音楽性、メンバー紹介など。JSONではなくHTML直書きでOKな更新頻度の低いセクション。）</p>
+      </div>
+      <div id="video" class="video-wrap">
+        <iframe src="https://www.youtube.com/embed/videoseries?list=UU" title="YouTube" loading="lazy" allowfullscreen></iframe>
+      </div>
+    </div>
+    <div class="contact-box" id="contact">
+      <h2>CONTACT</h2>
+      <p>出演依頼・お問い合わせはこちらから</p>
+      <a class="btn-gold" href="https://forms.gle/XXXX" target="_blank" rel="noopener">お問い合わせフォーム</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="sns">
+    <a href="#" rel="noopener">X (Twitter)</a>
+    <a href="#" rel="noopener">YouTube</a>
+    <a href="#" rel="noopener">Instagram</a>
+  </div>
+  © 2026 銀幕一楼とTIMECAFE
+</footer>
+
+<script>
+const DOW = ["日","月","火","水","木","金","土"];
+const pad = n => String(n).padStart(2,"0");
+
+function parseDate(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function tagHtml(t){
+  return t === "solo"
+    ? '<span class="tag tag-solo">銀幕一楼ソロ</span>'
+    : '<span class="tag tag-band">バンド</span>';
+}
+
+function renderSchedule(data){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = data.filter(e => parseDate(e.date) >= today).sort((a,b)=>a.date.localeCompare(b.date));
+  const past = data.filter(e => parseDate(e.date) < today).sort((a,b)=>b.date.localeCompare(a.date));
+
+  // hero ticket = 直近1件
+  const hero = document.getElementById("hero-ticket");
+  if(upcoming.length){
+    const e = upcoming[0], d = parseDate(e.date);
+    hero.innerHTML = `
+      <div class="ticket">
+        <div class="ticket-date">
+          <span class="month">${d.getFullYear()}.${pad(d.getMonth()+1)}</span>
+          <span class="day">${d.getDate()}</span>
+          <span class="dow">${DOW[d.getDay()]}曜日</span>
+        </div>
+        <div class="ticket-body">
+          <div>${tagHtml(e.type)}</div>
+          <p class="ticket-title serif">${e.title}</p>
+          <p class="ticket-meta"><span>会場　<b>${e.venue}</b></span></p>
+        </div>
+        <span class="ticket-stub-note">ADMIT ONE</span>
+      </div>`;
+  }else{
+    hero.innerHTML = '<div class="hero-empty">次回公演は近日発表 ── お楽しみに。</div>';
+  }
+
+  document.getElementById("sched-upcoming").innerHTML =
+    upcoming.length ? upcoming.map(e=>schedItemHtml(e)).join("") : '<li class="empty-note">現在予定されている公演はありません。</li>';
+  document.getElementById("sched-past").innerHTML = past.map(e=>schedItemHtml(e,"past")).join("");
+}
+
+function schedItemHtml(e, extraClass=""){
+  const d = parseDate(e.date);
+  return `<li class="sched-item ${extraClass}">
+    <div class="s-date">
+      <span class="d">${d.getDate()}</span>
+      <span class="m">${d.getFullYear()}.${pad(d.getMonth()+1)}</span>
+      <span class="w">${DOW[d.getDay()]}</span>
+    </div>
+    <div class="s-main">
+      <div class="title">${e.title}　${tagHtml(e.type)}</div>
+      <div class="venue">${e.venue}</div>
+    </div>
+    <div class="s-link">${e.link ? `<a href="${e.link}" target="_blank" rel="noopener">詳細</a>` : ""}</div>
+  </li>`;
+}
+
+function renderNews(data){
+  data = data.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById("news-list").innerHTML = data.map(n=>`
+    <li class="news-item">
+      <time datetime="${n.date}">${n.date.replaceAll("-",".")}</time>
+      <span class="news-cat">${n.category}</span>
+      <span class="n-title"><a href="${n.link}">${n.title}</a></span>
+    </li>`).join("");
+}
+
+document.getElementById("toggle-past").addEventListener("click", function(){
+  const past = document.getElementById("sched-past");
+  const open = past.hidden;
+  past.hidden = !open;
+  this.setAttribute("aria-expanded", String(open));
+  this.textContent = open ? "終了した公演を閉じる ▴" : "終了した公演を見る ▾";
+});
+
+/* ---------- calendar ---------- */
+let calYear, calMonth, scheduleData = [];
+
+function calEventHtml(e, today){
+  const cls = (e.type === "solo" ? "solo" : "band") + (parseDate(e.date) < today ? " done" : "");
+  const inner = `<span class="cal-ev ${cls}" title="${e.title}／${e.venue}">${e.title}</span>`;
+  return e.link ? `<a class="cal-ev ${cls}" href="${e.link}" target="_blank" rel="noopener" title="${e.title}／${e.venue}">${e.title}</a>` : inner;
+}
+
+function renderCalendar(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  document.getElementById("cal-title").textContent = `${calYear}年${calMonth+1}月`;
+
+  const first = new Date(calYear, calMonth, 1);
+  const start = new Date(first); start.setDate(1 - first.getDay());
+  const byDate = {};
+  for(const e of scheduleData) (byDate[e.date] ||= []).push(e);
+
+  let html = DOW.map((w,i)=>`<div class="cal-dow${i===0?" sun":""}">${w}</div>`).join("");
+  const d = new Date(start);
+  do{
+    for(let i=0;i<7;i++){
+      const key = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const other = d.getMonth() !== calMonth ? " other" : "";
+      const isToday = d.getTime() === today.getTime() ? " today" : "";
+      const evs = (byDate[key]||[]).map(e=>calEventHtml(e, today)).join("");
+      html += `<div class="cal-cell${other}${isToday}"><span class="n">${d.getDate()}</span>${evs}</div>`;
+      d.setDate(d.getDate()+1);
+    }
+  }while(d.getMonth() === calMonth);
+  document.getElementById("cal-grid").innerHTML = html;
+
+  // グリッド下: 月内一覧
+  const monthEvents = scheduleData
+    .filter(e => { const dd = parseDate(e.date); return dd.getFullYear()===calYear && dd.getMonth()===calMonth; })
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById("cal-month-list").innerHTML =
+    monthEvents.length ? monthEvents.map(e=>schedItemHtml(e, parseDate(e.date) < today ? "past" : "")).join("")
+                       : '<li class="empty-note">この月の公演はありません。</li>';
+}
+
+document.getElementById("cal-prev").addEventListener("click", ()=>{ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); });
+document.getElementById("cal-next").addEventListener("click", ()=>{ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); });
+
+function setView(mode){
+  const list = mode === "list";
+  document.getElementById("sched-view-list").hidden = !list;
+  document.getElementById("sched-view-cal").hidden = list;
+  document.getElementById("view-list").setAttribute("aria-selected", String(list));
+  document.getElementById("view-cal").setAttribute("aria-selected", String(!list));
+  if(!list) renderCalendar();
+}
+document.getElementById("view-list").addEventListener("click", ()=>setView("list"));
+document.getElementById("view-cal").addEventListener("click", ()=>setView("cal"));
+
+/* ---------- data loading ---------- */
+async function loadJson(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`${url}: ${res.status}`);
+  return res.json();
+}
+
+(async ()=>{
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  try{
+    scheduleData = await loadJson("data/schedule.json");
+    renderSchedule(scheduleData);
+  }catch(err){
+    console.error(err);
+    document.getElementById("sched-upcoming").innerHTML =
+      '<li class="empty-note">スケジュールを読み込めませんでした。時間をおいて再度お試しください。</li>';
+  }
+  try{
+    renderNews(await loadJson("data/news.json"));
+  }catch(err){
+    console.error(err);
+    document.getElementById("news-list").innerHTML =
+      '<li class="news-item"><span class="n-title">ニュースを読み込めませんでした。時間をおいて再度お試しください。</span></li>';
+  }
+})();
+</script>
+</body>
+</html>

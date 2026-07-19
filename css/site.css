@@ -337,3 +337,8 @@ footer .sns a:hover{color:var(--gold)}
 .video-intro .yt-banner{padding:18px 20px;gap:14px}
 .video-intro .yt-play{width:46px;height:46px;font-size:1rem}
 .video-intro .yt-text b{font-size:.95rem}
+
+/* ---------- profile duo ---------- */
+.profile-duo{align-items:start;margin-top:14px}
+.profile-side-photo img{width:100%;height:auto;border-radius:4px}
+@media(max-width:720px){.profile-side-photo{margin-bottom:8px}}

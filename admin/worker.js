@@ -764,8 +764,8 @@ async function refreshNews(){
       + '<span class="badge line">'+esc(e.category)+'</span>'
       + '<div class="t">'+esc(e.title)+(e.link?'<small>'+esc(e.link)+'</small>':'')+'</div>'
       + (waiting?'<span class="badge wait">'+e.publishAt.replace('T',' ')+' 解禁</span>':'')
-      + '<button class="small" onclick="editNews(\''+e.id+'\')">編集</button>'
-      + '<button class="small danger" onclick="delNews(\''+e.id+'\')">削除</button>'
+      + '<button class="small" onclick="editNews(\\''+e.id+'\\')">編集</button>'
+      + '<button class="small danger" onclick="delNews(\\''+e.id+'\\')">削除</button>'
       + '</div>';
   }).join('') || '<p class="hint">まだ登録がありません。</p>';
 }

@@ -330,3 +330,10 @@ footer .sns a:hover{color:var(--gold)}
 .yt-text b{font-family:'Shippori Mincho B1',serif;font-size:1.1rem;letter-spacing:.06em;display:block}
 .yt-text small{color:#CDbfae;font-size:.8rem}
 .yt-arrow{margin-left:auto;color:var(--gold);font-size:1.2rem}
+
+/* ---------- video section ---------- */
+.video-duo{margin-top:14px;align-items:center}
+.video-lead{font-size:1.25rem;font-weight:700;line-height:1.7;margin-bottom:20px}
+.video-intro .yt-banner{padding:18px 20px;gap:14px}
+.video-intro .yt-play{width:46px;height:46px;font-size:1rem}
+.video-intro .yt-text b{font-size:.95rem}

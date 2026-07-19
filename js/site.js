@@ -60,3 +60,7 @@ async function loadSchedule(){
   try{ return await loadJson(DATA_URL); }
   catch(e){ console.warn("APIに接続できないためローカルデータを使用", e); return loadJson(DATA_FALLBACK); }
 }
+async function loadNews(){
+  try{ return await loadJson("https://admin.ginmakuichiro.net/data/news.json"); }
+  catch(e){ console.warn("APIに接続できないためローカルデータを使用", e); return loadJson("/data/news.json"); }
+}

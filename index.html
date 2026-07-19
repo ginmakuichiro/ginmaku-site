@@ -157,7 +157,7 @@ function renderNews(data){
     document.getElementById("sched-upcoming").innerHTML =
       '<li class="empty-note">スケジュールを読み込めませんでした。時間をおいて再度お試しください。</li>';
   }
-  try{ renderNews(await loadJson("/data/news.json")); }
+  try{ renderNews(await loadNews()); }
   catch(err){
     console.error(err);
     document.getElementById("news-list").innerHTML =

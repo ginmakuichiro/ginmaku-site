@@ -58,7 +58,7 @@
 <script>
 (async ()=>{
   try{
-    const data = (await loadJson("/data/news.json")).sort((a,b)=>b.date.localeCompare(a.date));
+    const data = (await loadNews()).sort((a,b)=>b.date.localeCompare(a.date));
     document.getElementById("news-list").innerHTML = data.map(n=>`
       <li class="news-item">
         <time datetime="${n.date}">${n.date.replaceAll("-",".")}</time>

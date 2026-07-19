@@ -17,6 +17,7 @@ export default {
     const p = url.pathname;
 
     if (p === '/data/schedule.json') return publicSchedule(env);
+    if (p === '/data/news.json') return publicNews(env);
     if (p.startsWith('/img/')) return serveImage(env, p.slice(5));
     if (p === '/api/login' && req.method === 'POST') return login(req, env);
     if (p.startsWith('/api/')) {
@@ -30,6 +31,14 @@ export default {
       const m = p.match(/^\/api\/schedule\/([\w-]+)$/);
       if (m && req.method === 'PUT') return upsert(req, env, m[1]);
       if (m && req.method === 'DELETE') return remove(env, m[1]);
+      if (p === '/api/news' && req.method === 'GET') return json(await loadNews(env));
+      if (p === '/api/news' && req.method === 'POST') return upsertNews(req, env, null);
+      const mn = p.match(/^\/api\/news\/([\w-]+)$/);
+      if (mn && req.method === 'PUT') return upsertNews(req, env, mn[1]);
+      if (mn && req.method === 'DELETE') {
+        await saveNews(env, (await loadNews(env)).filter(e => e.id !== mn[1]));
+        return json({ ok: true });
+      }
       return json({ error: 'not found' }, 404);
     }
     return new Response(HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
@@ -98,6 +107,45 @@ async function remove(env, id) {
   for (const img of (target?.images || [])) await env.DATA.delete(img);
   await save(env, list.filter(e => e.id !== id));
   return json({ ok: true });
+}
+
+/* ---------- news ---------- */
+
+async function loadNews(env) {
+  return JSON.parse((await env.DATA.get('news')) || '[]');
+}
+async function saveNews(env, list) {
+  list.sort((a, b) => (a.date > b.date ? -1 : 1));
+  await env.DATA.put('news', JSON.stringify(list));
+}
+
+async function publicNews(env) {
+  const now = Date.now();
+  const list = (await loadNews(env))
+    .filter(e => !e.publishAt || new Date(e.publishAt).getTime() <= now)
+    .map(({ publishAt, ...rest }) => rest);
+  return json(list, 200, {
+    'access-control-allow-origin': '*',
+    'cache-control': 'public, max-age=60'
+  });
+}
+
+async function upsertNews(req, env, id) {
+  const b = await req.json();
+  if (!b.date || !b.title) return json({ error: 'date/title は必須です' }, 400);
+  const entry = {
+    id: id || crypto.randomUUID().slice(0, 8),
+    date: b.date,
+    category: String(b.category || 'NEWS').trim().toUpperCase() || 'NEWS',
+    title: String(b.title).trim(),
+    link: b.link || '',
+    publishAt: b.publishAt || ''
+  };
+  const list = await loadNews(env);
+  const i = list.findIndex(e => e.id === entry.id);
+  if (i >= 0) list[i] = entry; else list.push(entry);
+  await saveNews(env, list);
+  return json(entry);
 }
 
 /* ---------- 画像 ---------- */
@@ -247,6 +295,11 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 .msg.ok{display:block;background:#e7f0e0;color:#2c5e2e}
 .msg.ng{display:block;background:#f7e2e2;color:#8c2b2b}
 #login{max-width:360px;margin:80px auto}
+.tabs{display:flex;gap:0;margin-bottom:18px}
+.tabs button{flex:1;padding:11px 0;font-weight:700;letter-spacing:.12em;border:1px solid var(--line);background:#fff;color:var(--soft)}
+.tabs button:first-child{border-radius:4px 0 0 4px}
+.tabs button:last-child{border-radius:0 4px 4px 0;border-left:none}
+.tabs button.on{background:var(--dark);border-color:var(--dark);color:var(--gold)}
 .ai-box{background:var(--screen);border:1px solid var(--gold);border-radius:6px;padding:14px 16px;margin-bottom:18px}
 .ai-title{font-size:.82rem;font-weight:700;margin-bottom:8px}
 .ai-box textarea{resize:vertical}
@@ -298,6 +351,12 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 </div>
 
 <div id="app" hidden>
+  <div class="tabs">
+    <button id="tabSchedBtn" class="on">スケジュール</button>
+    <button id="tabNewsBtn">ニュース</button>
+  </div>
+
+  <div id="tab-sched">
   <div class="card">
     <h2><span id="formTitle">公演を追加</span>
       <button type="button" class="small" id="importBtn">概要ジェネレータJSONを読み込む</button>
@@ -370,6 +429,33 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
     <h2>登録済み公演</h2>
     <div id="list"></div>
   </div>
+  </div><!-- /tab-sched -->
+
+  <div id="tab-news" hidden>
+  <div class="card">
+    <h2><span id="nFormTitle">ニュースを追加</span></h2>
+    <form id="nf">
+      <input type="hidden" id="nId">
+      <div class="row">
+        <div><label>日付 *</label><input type="date" id="nDate" required></div>
+        <div><label>カテゴリ</label><input id="nCategory" list="dl-ncat" autocomplete="off" placeholder="NEWS" value="NEWS"></div>
+      </div>
+      <label>タイトル *</label><input id="nTitle" required>
+      <label>リンク（任意）</label><input id="nLink" type="url" placeholder="https://">
+      <label>公開日時（情報解禁）</label><input type="datetime-local" id="nPublishAt">
+      <p class="hint">空欄なら即公開。指定するとその時刻までサイトに表示されません。</p>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button type="submit" class="primary" id="nSubmitBtn">追加する</button>
+        <button type="button" id="nCancelEdit" hidden>編集をやめる</button>
+      </div>
+    </form>
+    <datalist id="dl-ncat"><option value="NEWS"><option value="MEDIA"><option value="RELEASE"><option value="GOODS"><option value="INFO"></datalist>
+  </div>
+  <div class="card">
+    <h2>登録済みニュース</h2>
+    <div id="nList"></div>
+  </div>
+  </div><!-- /tab-news -->
 </div>
 </main>
 <script>
@@ -656,15 +742,74 @@ $('f').onsubmit = async ev => {
   }catch(e){ msg(e.message, false); }
 };
 
+/* ---- タブ ---- */
+function setTab(sched){
+  $('tab-sched').hidden = !sched; $('tab-news').hidden = sched;
+  $('tabSchedBtn').classList.toggle('on', sched);
+  $('tabNewsBtn').classList.toggle('on', !sched);
+}
+$('tabSchedBtn').onclick = ()=>setTab(true);
+$('tabNewsBtn').onclick = ()=>setTab(false);
+
+/* ---- ニュース ---- */
+let newsEntries = [];
+
+async function refreshNews(){
+  newsEntries = await api('/api/news');
+  const now = Date.now();
+  $('nList').innerHTML = newsEntries.map(e=>{
+    const waiting = e.publishAt && new Date(e.publishAt).getTime() > now;
+    return '<div class="item">'
+      + '<span class="d">'+e.date.replaceAll('-','.')+'</span>'
+      + '<span class="badge line">'+esc(e.category)+'</span>'
+      + '<div class="t">'+esc(e.title)+(e.link?'<small>'+esc(e.link)+'</small>':'')+'</div>'
+      + (waiting?'<span class="badge wait">'+e.publishAt.replace('T',' ')+' 解禁</span>':'')
+      + '<button class="small" onclick="editNews(\''+e.id+'\')">編集</button>'
+      + '<button class="small danger" onclick="delNews(\''+e.id+'\')">削除</button>'
+      + '</div>';
+  }).join('') || '<p class="hint">まだ登録がありません。</p>';
+}
+
+window.editNews = id => {
+  const e = newsEntries.find(x=>x.id===id); if(!e) return;
+  $('nId').value=e.id; $('nDate').value=e.date; $('nCategory').value=e.category;
+  $('nTitle').value=e.title; $('nLink').value=e.link||''; $('nPublishAt').value=e.publishAt||'';
+  $('nFormTitle').textContent='ニュースを編集'; $('nSubmitBtn').textContent='保存する'; $('nCancelEdit').hidden=false;
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+window.delNews = async id => {
+  const e = newsEntries.find(x=>x.id===id);
+  if(!confirm((e?e.date+' '+e.title:'このニュース')+' を削除しますか？')) return;
+  await api('/api/news/'+id,{method:'DELETE'});
+  msg('削除しました', true); refreshNews();
+};
+
+function resetNewsForm(){
+  $('nf').reset(); $('nId').value=''; $('nCategory').value='NEWS';
+  $('nFormTitle').textContent='ニュースを追加'; $('nSubmitBtn').textContent='追加する'; $('nCancelEdit').hidden=true;
+}
+$('nCancelEdit').onclick = resetNewsForm;
+
+$('nf').onsubmit = async ev => {
+  ev.preventDefault();
+  const id = $('nId').value;
+  const body = { date:$('nDate').value, category:$('nCategory').value.trim(),
+    title:$('nTitle').value.trim(), link:$('nLink').value.trim(), publishAt:$('nPublishAt').value };
+  try{
+    await api(id?'/api/news/'+id:'/api/news', {method:id?'PUT':'POST', body:JSON.stringify(body)});
+    msg(id?'保存しました':'追加しました', true); resetNewsForm(); refreshNews();
+  }catch(e){ msg(e.message, false); }
+};
+
 $('doLogin').onclick = async () => {
-  try{ await api('/api/login',{method:'POST',body:JSON.stringify({password:$('pw').value})}); $('pw').value=''; show(true); refresh(); }
+  try{ await api('/api/login',{method:'POST',body:JSON.stringify({password:$('pw').value})}); $('pw').value=''; show(true); refresh(); refreshNews(); }
   catch(e){ msg(e.message,false); }
 };
 $('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') $('doLogin').click(); });
 $('logout').onclick = () => { document.cookie='gnk_session=; Path=/; Max-Age=0'; show(false); };
 
 resetForm();
-(async ()=>{ try{ await refresh(); show(true); } catch(e){ show(false); } })();
+(async ()=>{ try{ await refresh(); refreshNews(); show(true); } catch(e){ show(false); } })();
 </script>
 </body>
 </html>`;

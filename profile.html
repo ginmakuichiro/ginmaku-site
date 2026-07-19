@@ -25,6 +25,15 @@
 .profile-duo{align-items:start}
 .profile-side-photo img{width:100%;height:auto;border-radius:4px}
 @media(max-width:720px){.profile-side-photo{margin-bottom:8px}}
+.member-list li{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.member-list .mname{font-weight:500}
+.msns{margin-left:auto;display:flex;gap:8px}
+.msns a{
+  font-size:.7rem;font-weight:700;letter-spacing:.08em;text-decoration:none;
+  color:var(--curtain);border:1px solid var(--curtain);border-radius:2px;
+  padding:1px 10px;transition:background .2s,color .2s;
+}
+.msns a:hover{background:var(--curtain);color:var(--screen)}
 </style>
 </head>
 <body>
@@ -68,11 +77,31 @@
 
       <p class="serif" style="font-size:1rem;font-weight:700;margin-top:32px">MEMBER</p>
       <ul class="member-list">
-        <li><span class="part">VOCAL</span>銀幕一楼</li>
-        <li><span class="part">BASS</span>松永健太</li>
-        <li><span class="part">DRUMS</span>瀬間絢子</li>
-        <li><span class="part">GUITAR</span>塚原嵩</li>
-        <li><span class="part">KEYBOARD</span>野口紗依子</li>
+        <li><span class="part">VOCAL</span><span class="mname">銀幕一楼</span>
+          <span class="msns">
+            <a href="https://x.com/TIMECAFE_K" target="_blank" rel="noopener">X</a>
+            <a href="https://www.youtube.com/@銀幕一楼の歌謡チャンネル" target="_blank" rel="noopener">YouTube</a>
+          </span></li>
+        <li><span class="part">BASS</span><span class="mname">松永健太</span>
+          <span class="msns">
+            <a href="https://x.com/kentamatsunaga" target="_blank" rel="noopener">X</a>
+            <a href="https://www.youtube.com/@baker-bassist" target="_blank" rel="noopener">YouTube</a>
+          </span></li>
+        <li><span class="part">DRUMS</span><span class="mname">瀬間絢子</span>
+          <span class="msns">
+            <a href="https://x.com/achon66" target="_blank" rel="noopener">X</a>
+            <a href="https://www.youtube.com/@ちゃんせまのドラムチャンネル" target="_blank" rel="noopener">YouTube</a>
+          </span></li>
+        <li><span class="part">GUITAR</span><span class="mname">塚原嵩</span>
+          <span class="msns">
+            <a href="https://x.com/1111Takashi" target="_blank" rel="noopener">X</a>
+            <a href="https://www.youtube.com/@takashitsukahara1111" target="_blank" rel="noopener">YouTube</a>
+          </span></li>
+        <li><span class="part">KEYBOARD</span><span class="mname">野口紗依子</span>
+          <span class="msns">
+            <a href="https://x.com/saekopatex" target="_blank" rel="noopener">X</a>
+            <a href="https://www.youtube.com/@saeko6746" target="_blank" rel="noopener">YouTube</a>
+          </span></li>
       </ul>
     </div>
     </div>

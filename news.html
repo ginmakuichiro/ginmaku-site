@@ -16,6 +16,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/site.css?v=4">
+<style>
+.news-article{padding:26px 4px;border-bottom:1px solid var(--line)}
+.news-article .meta{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.news-article time{font-size:.82rem;color:var(--ink-soft);font-family:'Shippori Mincho B1',serif}
+.news-article h2{font-family:'Shippori Mincho B1',serif;font-size:1.2rem;font-weight:700;line-height:1.5;margin-bottom:10px}
+.news-article .body{font-size:.92rem;white-space:pre-wrap;word-break:break-word}
+.news-article .body a{color:var(--curtain);word-break:break-all}
+</style>
 </head>
 <body>
 
@@ -40,7 +48,7 @@
     <div class="sec-head">
       <h2>NEWS</h2><span class="jp">ニュース</span>
     </div>
-    <ul class="news-list" id="news-list"></ul>
+    <div id="news-list"></div>
   </section>
 </main>
 
@@ -60,15 +68,19 @@
   try{
     const data = (await loadNews()).sort((a,b)=>b.date.localeCompare(a.date));
     document.getElementById("news-list").innerHTML = data.map(n=>`
-      <li class="news-item">
-        <time datetime="${n.date}">${n.date.replaceAll("-",".")}</time>
-        <span class="news-cat">${n.category}</span>
-        <span class="n-title">${n.link && n.link !== "#" ? `<a href="${n.link}">${n.title}</a>` : n.title}</span>
-      </li>`).join("") || '<li class="empty-note">お知らせはまだありません。</li>';
+      <article class="news-article" id="${n.id || ""}">
+        <div class="meta">
+          <time datetime="${n.date}">${n.date.replaceAll("-",".")}</time>
+          <span class="news-cat">${escHtml(n.category)}</span>
+        </div>
+        <h2>${escHtml(n.title)}</h2>
+        ${n.body ? `<div class="body">${linkify(n.body)}</div>`
+          : (n.link && n.link !== "#" ? `<div class="body"><a href="${escHtml(n.link)}" target="_blank" rel="noopener">${escHtml(n.link)}</a></div>` : "")}
+      </article>`).join("") || '<p class="empty-note">お知らせはまだありません。</p>';
+    if(location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   }catch(err){
     console.error(err);
-    document.getElementById("news-list").innerHTML =
-      '<li class="news-item"><span class="n-title">ニュースを読み込めませんでした。</span></li>';
+    document.getElementById("news-list").innerHTML = '<p class="empty-note">ニュースを読み込めませんでした。</p>';
   }
 })();
 </script>

@@ -60,6 +60,13 @@ async function loadSchedule(){
   try{ return await loadJson(DATA_URL); }
   catch(e){ console.warn("APIに接続できないためローカルデータを使用", e); return loadJson(DATA_FALLBACK); }
 }
+function escHtml(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+/* URLを自動でリンク化（エスケープ済みテキストに適用） */
+function linkify(s){
+  return escHtml(s).replace(/(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+
 async function loadNews(){
   try{ return await loadJson("https://admin.ginmakuichiro.net/data/news.json"); }
   catch(e){ console.warn("APIに接続できないためローカルデータを使用", e); return loadJson("/data/news.json"); }

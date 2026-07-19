@@ -138,6 +138,7 @@ async function upsertNews(req, env, id) {
     date: b.date,
     category: String(b.category || 'NEWS').trim().toUpperCase() || 'NEWS',
     title: String(b.title).trim(),
+    body: String(b.body || '').trim(),
     link: b.link || '',
     publishAt: b.publishAt || ''
   };
@@ -441,7 +442,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
         <div><label>カテゴリ</label><input id="nCategory" list="dl-ncat" autocomplete="off" placeholder="NEWS" value="NEWS"></div>
       </div>
       <label>タイトル *</label><input id="nTitle" required>
-      <label>リンク（任意）</label><input id="nLink" type="url" placeholder="https://">
+      <label>本文（改行OK・URLは自動でリンクになります）</label><textarea id="nBody" rows="6" placeholder="お知らせの本文。URLを貼るとサイト上で自動的にリンクになります"></textarea>
       <label>公開日時（情報解禁）</label><input type="datetime-local" id="nPublishAt">
       <p class="hint">空欄なら即公開。指定するとその時刻までサイトに表示されません。</p>
       <div style="margin-top:16px;display:flex;gap:10px">
@@ -762,7 +763,7 @@ async function refreshNews(){
     return '<div class="item">'
       + '<span class="d">'+e.date.replaceAll('-','.')+'</span>'
       + '<span class="badge line">'+esc(e.category)+'</span>'
-      + '<div class="t">'+esc(e.title)+(e.link?'<small>'+esc(e.link)+'</small>':'')+'</div>'
+      + '<div class="t">'+esc(e.title)+(e.body?'<small>'+esc(e.body.split('\\n')[0].slice(0,60))+'</small>':'')+'</div>'
       + (waiting?'<span class="badge wait">'+e.publishAt.replace('T',' ')+' 解禁</span>':'')
       + '<button class="small" onclick="editNews(\\''+e.id+'\\')">編集</button>'
       + '<button class="small danger" onclick="delNews(\\''+e.id+'\\')">削除</button>'
@@ -773,7 +774,7 @@ async function refreshNews(){
 window.editNews = id => {
   const e = newsEntries.find(x=>x.id===id); if(!e) return;
   $('nId').value=e.id; $('nDate').value=e.date; $('nCategory').value=e.category;
-  $('nTitle').value=e.title; $('nLink').value=e.link||''; $('nPublishAt').value=e.publishAt||'';
+  $('nTitle').value=e.title; $('nBody').value=e.body||''; $('nPublishAt').value=e.publishAt||'';
   $('nFormTitle').textContent='ニュースを編集'; $('nSubmitBtn').textContent='保存する'; $('nCancelEdit').hidden=false;
   window.scrollTo({top:0,behavior:'smooth'});
 };
@@ -794,7 +795,7 @@ $('nf').onsubmit = async ev => {
   ev.preventDefault();
   const id = $('nId').value;
   const body = { date:$('nDate').value, category:$('nCategory').value.trim(),
-    title:$('nTitle').value.trim(), link:$('nLink').value.trim(), publishAt:$('nPublishAt').value };
+    title:$('nTitle').value.trim(), body:$('nBody').value.trim(), publishAt:$('nPublishAt').value };
   try{
     await api(id?'/api/news/'+id:'/api/news', {method:id?'PUT':'POST', body:JSON.stringify(body)});
     msg(id?'保存しました':'追加しました', true); resetNewsForm(); refreshNews();

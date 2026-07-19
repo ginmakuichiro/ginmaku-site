@@ -22,6 +22,9 @@
 .member-list{list-style:none;margin-top:10px}
 .member-list li{padding:8px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
 .member-list .part{display:inline-block;min-width:6.5em;font-size:.75rem;font-weight:700;color:var(--gold);letter-spacing:.15em}
+.profile-duo{align-items:start}
+.profile-side-photo img{width:100%;height:auto;border-radius:4px}
+@media(max-width:720px){.profile-side-photo{margin-bottom:8px}}
 </style>
 </head>
 <body>
@@ -52,6 +55,10 @@
       <img src="/img/artist-photo.jpeg" alt="銀幕一楼とTIMECAFE アーティスト写真 2024" width="2048" height="1366" loading="lazy">
     </div>
 
+    <div class="duo profile-duo">
+    <div class="profile-side-photo">
+      <img src="/img/profile-photo.jpg" alt="銀幕一楼とTIMECAFE" width="1600" height="1135" loading="lazy">
+    </div>
     <div class="profile-text">
       <p style="font-size:.85rem;letter-spacing:.2em;color:var(--ink-soft)">歌謡エンターテイメントバンド</p>
       <p class="serif" style="font-size:1.4rem;font-weight:800;margin-bottom:18px">銀幕一楼とTIMECAFE</p>
@@ -67,6 +74,7 @@
         <li><span class="part">GUITAR</span>塚原嵩</li>
         <li><span class="part">KEYBOARD</span>野口紗依子</li>
       </ul>
+    </div>
     </div>
   </section>
 </main>

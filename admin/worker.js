@@ -86,6 +86,7 @@ async function upsert(req, env, id) {
       : [],
     drink: String(b.drink || '').trim(),
     lineup: String(b.lineup || '').trim(),
+    reserve: !!b.reserve,
     note: b.note || '', link: b.link || '',
     images: Array.isArray(b.images)
       ? b.images.filter(s => typeof s === 'string' && /^img_[\w-]+$/.test(s)).slice(0, 4)
@@ -319,6 +320,8 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 .ai-box textarea{resize:vertical}
 .ai-actions{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .ai-actions .primary{margin-left:auto}
+.chk{display:flex;align-items:center;gap:8px;font-weight:500;margin-top:12px;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--curtain)}
 .img-thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
 .img-thumbs .th{position:relative;width:110px}
 .img-thumbs img{width:110px;height:110px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
@@ -415,6 +418,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       <label>ドリンク代</label><input id="drink" list="dl-drink" autocomplete="off" placeholder="例: +1drink ¥600 / +2D">
       <label>出演（対バン含む全バンド・改行区切り）</label><textarea id="lineup" rows="4" placeholder="銀幕一楼とTIMECAFE&#10;○○バンド&#10;△△（O.A.）"></textarea>
       <label>チケット/詳細リンク</label><input id="link" type="url" placeholder="https://（毎回貼り付け。候補保存はされません）">
+      <label class="chk"><input type="checkbox" id="reserve"> この公演ページに「チケット取り置きフォーム」のリンクを載せる</label>
       <label>備考（改行OK）</label><textarea id="note" rows="3" placeholder="入場順・注意事項など"></textarea>
       <label>フライヤー画像（最大4枚・自動で縮小されます）</label>
       <div id="imgThumbs" class="img-thumbs"></div>
@@ -530,7 +534,7 @@ function formEntry(){
   return { date:$('date').value, title:$('title').value.trim(), venue:$('venue').value.trim(),
     type:$('type').value, typeLabel:$('typeLabel').value.trim(),
     open:$('open').value.trim(), start:$('start').value.trim(),
-    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), lineup:$('lineup').value.trim(), note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
+    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), lineup:$('lineup').value.trim(), reserve:$('reserve').checked, note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
 }
 function preview(){
   const e = formEntry();
@@ -561,10 +565,12 @@ function preview2(e){
     + '<div class="e-body"><dl>'+rows.join('')+'</dl>'
     + ((e.images||[]).length?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+e.images.map(id=>'<img src="/img/'+id+'" style="width:90px;height:90px;object-fit:cover;border-radius:4px;border:1px solid var(--line)">').join('')+'</div>':'')
     + (e.link?'<span class="e-btn">チケット・詳細はこちら</span>':'')
+    + (e.reserve?' <span class="e-btn" style="background:transparent;border:1px solid var(--gold);color:var(--ink)">チケット取り置きフォーム</span>':'')
     + '</div></div>';
 }
 ['date','title','venue','open','start','drink','lineup','note','link','typeLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
 $('type').addEventListener('change', ()=>{ $('typeLabelWrap').hidden = $('type').value!=='other'; preview(); });
+$('reserve').addEventListener('change', preview);
 
 /* ---- 入力候補（過去の登録から） ---- */
 function fillDatalists(){
@@ -732,6 +738,7 @@ window.edit = id => {
   (e.tickets&&e.tickets.length ? e.tickets : [{name:'前売',price:''},{name:'当日',price:''}]).forEach(t=>ticketRow(t.name,t.price));
   $('id').value = e.id;
   images = (e.images||[]).slice(); newImageIds = new Set(); renderThumbs();
+  $('reserve').checked = !!e.reserve;
   $('formTitle').textContent='公演を編集'; $('submitBtn').textContent='保存する'; $('cancelEdit').hidden=false;
   preview();
   window.scrollTo({top:0,behavior:'smooth'});

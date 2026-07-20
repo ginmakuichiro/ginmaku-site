@@ -194,8 +194,12 @@ function renderNews(data){
     const digits = String(d.count).split("")
       .map(n=>`<span class="v-d">${n}</span>`).join("");
     document.getElementById("visitor-digits").innerHTML = digits;
-    /* キリ番判定: 50の倍数（100以上）、または3桁以上のゾロ目 */
-    const kiri = (c >= 100 && c % 50 === 0) || (s.length >= 3 && [...s].every(x => x === s[0]));
+    /* キリ番判定（3桁以上）: 頭の数字＋残り全部0（100,200,…,1000,2000,…）／ゾロ目（111,2222,…）／1からの連番（123,1234,…） */
+    const kiri = s.length >= 3 && (
+      /^[1-9]0+$/.test(s) ||
+      [...s].every(x => x === s[0]) ||
+      "123456789".startsWith(s)
+    );
     if(kiri) document.getElementById("visitor-kiriban").hidden = false;
     document.getElementById("visitor").hidden = false;
   }catch(e){ /* カウンター取得失敗時は非表示のまま */ }

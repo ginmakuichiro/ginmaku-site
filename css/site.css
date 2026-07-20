@@ -398,3 +398,20 @@ footer .sns a:hover{color:var(--gold)}
   line-height:1.35;
   text-overflow:clip;
 }
+
+/* ---------- visitor counter ---------- */
+.visitor-strip{
+  background:var(--curtain-deep);
+  text-align:center;padding:14px 20px 20px;
+}
+.visitor-strip p{
+  color:var(--screen);font-size:.8rem;letter-spacing:.18em;
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+}
+.v-digits{display:inline-flex;gap:3px}
+.v-d{
+  display:inline-block;width:1.5em;padding:3px 0;text-align:center;
+  background:#17090A;border:1px solid var(--gold);border-radius:2px;
+  color:var(--gold);font-family:'Shippori Mincho B1',serif;
+  font-size:1rem;font-weight:700;letter-spacing:0;
+}

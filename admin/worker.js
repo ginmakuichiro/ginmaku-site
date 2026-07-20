@@ -19,12 +19,27 @@ export default {
     if (p === '/data/schedule.json') return publicSchedule(env);
     if (p === '/data/news.json') return publicNews(env);
     if (p.startsWith('/img/')) return serveImage(env, p.slice(5));
+    if (p === '/api/count') {
+      const cors = { 'access-control-allow-origin': '*' };
+      if (req.method === 'POST') {
+        const n = parseInt((await env.DATA.get('visitors')) || '0', 10) + 1;
+        await env.DATA.put('visitors', String(n));
+        return json({ count: n }, 200, cors);
+      }
+      return json({ count: parseInt((await env.DATA.get('visitors')) || '0', 10) }, 200, cors);
+    }
     if (p === '/api/login' && req.method === 'POST') return login(req, env);
     if (p.startsWith('/api/')) {
       if (!(await authed(req, env))) return json({ error: 'unauthorized' }, 401);
       if (p === '/api/schedule' && req.method === 'GET') return json(await load(env));
       if (p === '/api/schedule' && req.method === 'POST') return upsert(req, env, null);
       if (p === '/api/parse' && req.method === 'POST') return aiParse(req, env);
+      if (p === '/api/count/reset' && req.method === 'POST') {
+        const b = await req.json().catch(() => ({}));
+        const n = Math.max(0, parseInt(b.value, 10) || 0);
+        await env.DATA.put('visitors', String(n));
+        return json({ count: n });
+      }
       if (p === '/api/image' && req.method === 'POST') return uploadImage(req, env);
       const mi = p.match(/^\/api\/image\/(img_[\w-]+)$/);
       if (mi && req.method === 'DELETE') { await env.DATA.delete(mi[1]); return json({ ok: true }); }
@@ -448,6 +463,15 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
     <h2>登録済み公演</h2>
     <div id="list"></div>
   </div>
+  <div class="card">
+    <h2>来訪者カウンター</h2>
+    <p style="font-size:.95rem">現在のカウント: <b id="visitorCount" style="font-size:1.3rem">…</b> 人</p>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input id="visitorSet" inputmode="numeric" placeholder="設定したい数値（空欄で0）" style="max-width:240px">
+      <button type="button" class="danger" id="visitorReset">この数値にリセット</button>
+    </div>
+    <p class="hint">サイトのトップページが表示されるたびに1ずつ増えます。</p>
+  </div>
   </div><!-- /tab-sched -->
 
   <div id="tab-news" hidden>
@@ -770,6 +794,21 @@ $('f').onsubmit = async ev => {
   }catch(e){ msg(e.message, false); }
 };
 
+/* ---- 来訪者カウンター ---- */
+async function refreshCount(){
+  try{ const d = await (await fetch('/api/count')).json(); $('visitorCount').textContent = d.count.toLocaleString(); }catch(e){}
+}
+$('visitorReset').onclick = async ()=>{
+  const v = $('visitorSet').value.trim() || '0';
+  if(!confirm('カウンターを '+v+' にリセットしますか？')) return;
+  try{
+    const d = await api('/api/count/reset',{method:'POST',body:JSON.stringify({value:v})});
+    $('visitorCount').textContent = d.count.toLocaleString();
+    $('visitorSet').value='';
+    msg('カウンターを '+d.count+' にしました', true);
+  }catch(e){ msg(e.message,false); }
+};
+
 /* ---- タブ ---- */
 function setTab(sched){
   $('tab-sched').hidden = !sched; $('tab-news').hidden = sched;
@@ -869,14 +908,14 @@ $('nf').onsubmit = async ev => {
 };
 
 $('doLogin').onclick = async () => {
-  try{ await api('/api/login',{method:'POST',body:JSON.stringify({password:$('pw').value})}); $('pw').value=''; show(true); refresh(); refreshNews(); }
+  try{ await api('/api/login',{method:'POST',body:JSON.stringify({password:$('pw').value})}); $('pw').value=''; show(true); refresh(); refreshNews(); refreshCount(); }
   catch(e){ msg(e.message,false); }
 };
 $('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') $('doLogin').click(); });
 $('logout').onclick = () => { document.cookie='gnk_session=; Path=/; Max-Age=0'; show(false); };
 
 resetForm();
-(async ()=>{ try{ await refresh(); refreshNews(); show(true); } catch(e){ show(false); } })();
+(async ()=>{ try{ await refresh(); refreshNews(); refreshCount(); show(true); } catch(e){ show(false); } })();
 </script>
 </body>
 </html>`;

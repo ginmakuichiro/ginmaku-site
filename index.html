@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/site.css?v=5">
+<link rel="stylesheet" href="/css/site.css?v=6">
 </head>
 <body>
 
@@ -38,6 +38,10 @@
 
 <div class="screen-visual">
   <img src="img/artist-photo.jpeg" alt="銀幕一楼とTIMECAFE アーティスト写真 2024" width="2048" height="1366">
+</div>
+
+<div class="visitor-strip" id="visitor" hidden>
+  <p>あなたは <span class="v-digits" id="visitor-digits"></span> 人目のご贔屓さま</p>
 </div>
 
 <div class="hero" id="top">
@@ -181,6 +185,17 @@ function renderNews(data){
       <span class="n-title"><a href="/news#${n.id || ""}">${escHtml(n.title)}</a></span>
     </li>`).join("");
 }
+
+/* 来訪者カウンター */
+(async ()=>{
+  try{
+    const d = await (await fetch("https://admin.ginmakuichiro.net/api/count", {method:"POST"})).json();
+    const digits = String(d.count).padStart(7,"0").split("")
+      .map(n=>`<span class="v-d">${n}</span>`).join("");
+    document.getElementById("visitor-digits").innerHTML = digits;
+    document.getElementById("visitor").hidden = false;
+  }catch(e){ /* カウンター取得失敗時は非表示のまま */ }
+})();
 
 (async ()=>{
   try{ renderTop(await loadSchedule()); }

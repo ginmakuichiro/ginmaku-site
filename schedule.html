@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/site.css?v=11">
+<link rel="stylesheet" href="/css/site.css?v=12">
 </head>
 <body>
 
@@ -43,6 +43,10 @@
     <div class="view-toggle" role="tablist" aria-label="表示切替">
       <button id="view-list" role="tab" aria-selected="true">リスト</button>
       <button id="view-cal" role="tab" aria-selected="false">カレンダー</button>
+    </div>
+    <div class="pref-filter" id="pref-filter-wrap" hidden>
+      <label for="pref-filter">地域で絞り込み</label>
+      <select id="pref-filter"><option value="">すべての地域</option></select>
     </div>
     <div id="sched-view-list">
       <ul class="sched-list" id="sched-upcoming"></ul>
@@ -73,14 +77,43 @@
   © 2026 銀幕一楼とTIMECAFE
 </footer>
 
-<script src="/js/site.js?v=3"></script>
+<script src="/js/site.js?v=4"></script>
 <script>
-let calYear, calMonth, scheduleData = [];
+let calYear, calMonth, scheduleData = [], prefFilter = "";
+
+/* 都道府県フィルタ適用後のデータ */
+function filteredData(){
+  return prefFilter ? scheduleData.filter(e => e.pref === prefFilter) : scheduleData;
+}
+
+function setupPrefFilter(){
+  const prefs = [...new Set(scheduleData.map(e => e.pref).filter(Boolean))];
+  if(!prefs.length) return;
+  const sel = document.getElementById("pref-filter");
+  /* 北→南の並び（都道府県コード順）。リスト外（海外など）は末尾 */
+  const ORDER = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
+  prefs.sort((a,b)=>{
+    const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
+    return (ia<0?999:ia) - (ib<0?999:ib) || a.localeCompare(b,"ja");
+  });
+  for(const p of prefs){
+    const o = document.createElement("option");
+    o.value = p; o.textContent = p;
+    sel.appendChild(o);
+  }
+  document.getElementById("pref-filter-wrap").hidden = false;
+  sel.addEventListener("change", ()=>{
+    prefFilter = sel.value;
+    renderList();
+    if(document.getElementById("sched-view-cal").hidden === false) renderCalendar();
+  });
+}
 
 function renderList(){
   const today = new Date(); today.setHours(0,0,0,0);
-  const upcoming = scheduleData.filter(e => parseDate(e.date) >= today).sort((a,b)=>a.date.localeCompare(b.date));
-  const past = scheduleData.filter(e => parseDate(e.date) < today).sort((a,b)=>b.date.localeCompare(a.date));
+  const data = filteredData();
+  const upcoming = data.filter(e => parseDate(e.date) >= today).sort((a,b)=>a.date.localeCompare(b.date));
+  const past = data.filter(e => parseDate(e.date) < today).sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById("sched-upcoming").innerHTML =
     upcoming.length ? upcoming.map(e=>schedItemHtml(e)).join("") : '<li class="empty-note">現在予定されている公演はありません。</li>';
   document.getElementById("sched-past").innerHTML = past.map(e=>schedItemHtml(e,"past")).join("");
@@ -101,7 +134,7 @@ function renderCalendar(){
   const first = new Date(calYear, calMonth, 1);
   const start = new Date(first); start.setDate(1 - first.getDay());
   const byDate = {};
-  for(const e of scheduleData) (byDate[e.date] ||= []).push(e);
+  for(const e of filteredData()) (byDate[e.date] ||= []).push(e);
 
   let html = DOW.map((w,i)=>`<div class="cal-dow${i===0?" sun":""}">${w}</div>`).join("");
   const d = new Date(start);
@@ -117,7 +150,7 @@ function renderCalendar(){
   }while(d.getMonth() === calMonth);
   document.getElementById("cal-grid").innerHTML = html;
 
-  const monthEvents = scheduleData
+  const monthEvents = filteredData()
     .filter(e => { const dd = parseDate(e.date); return dd.getFullYear()===calYear && dd.getMonth()===calMonth; })
     .sort((a,b)=>a.date.localeCompare(b.date));
   document.getElementById("cal-month-list").innerHTML =
@@ -152,6 +185,7 @@ document.getElementById("view-cal").addEventListener("click", ()=>setView("cal")
   calYear = now.getFullYear(); calMonth = now.getMonth();
   try{
     scheduleData = await loadSchedule();
+    setupPrefFilter();
     renderList();
   }catch(err){
     console.error(err);

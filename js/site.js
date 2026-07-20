@@ -12,6 +12,9 @@ function typeLabelOf(e){ return e.type === "other" ? (e.typeLabel || "出演") :
 function tagHtml(e){
   return `<span class="tag ${isBandType(e.type) ? "tag-band" : "tag-solo"}">${typeLabelOf(e)}</span>`;
 }
+function prefTag(e){
+  return e.pref ? `<span class="tag tag-pref">${escHtml(e.pref)}</span>` : "";
+}
 
 function ticketsOf(e){
   return (e.tickets && e.tickets.length) ? e.tickets
@@ -43,7 +46,7 @@ function schedItemHtml(e, extraClass=""){
       <span class="w">${DOW[d.getDay()]}</span>
     </div>
     <div class="s-main">
-      <div class="title">${title}　${tagHtml(e)}</div>
+      <div class="title">${title}　${tagHtml(e)}${prefTag(e)}</div>
       <div class="venue">${e.venue}</div>
       ${detailsHtml(e)}
     </div>

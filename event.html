@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/site.css?v=11">
+<link rel="stylesheet" href="/css/site.css?v=12">
 <style>
 .event-hero{background:repeating-linear-gradient(90deg,var(--curtain) 0 42px,#6A1B21 42px 84px);padding:56px 20px 64px}
 .event-hero-inner{max-width:760px;margin:0 auto}
@@ -74,7 +74,7 @@
   © 2026 銀幕一楼とTIMECAFE
 </footer>
 
-<script src="/js/site.js?v=3"></script>
+<script src="/js/site.js?v=4"></script>
 <script>
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
@@ -107,7 +107,7 @@ function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;"
       <div class="et-body">
         <dl>
           <div class="et-row"><dt>出演形態</dt><dd>${tagHtml(e)}</dd></div>
-          <div class="et-row"><dt>会場</dt><dd>${esc(e.venue)}</dd></div>
+          <div class="et-row"><dt>会場</dt><dd>${esc(e.venue)}${e.pref ? `　<span class="tag tag-pref">${esc(e.pref)}</span>` : ""}</dd></div>
           ${e.open || e.start ? `<div class="et-row"><dt>時間</dt><dd>${[e.open?`OPEN ${e.open}`:"",e.start?`START ${e.start}`:""].filter(Boolean).join(" ／ ")}</dd></div>` : ""}
           ${tickets.length ? `<div class="et-row"><dt>チケット</dt><dd><ul class="et-tickets">${tickets.map(t=>`<li><span>${esc(t.name)}</span><span class="price">¥${Number(t.price).toLocaleString()}</span></li>`).join("")}</ul></dd></div>` : ""}
           ${e.drink ? `<div class="et-row"><dt>ドリンク</dt><dd>${esc(e.drink)}</dd></div>` : ""}

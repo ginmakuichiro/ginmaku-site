@@ -100,6 +100,7 @@ async function upsert(req, env, id) {
                  .filter(t => t.name && t.price)
       : [],
     drink: String(b.drink || '').trim(),
+    pref: String(b.pref || '').trim(),
     lineup: String(b.lineup || '').trim(),
     reserve: !!b.reserve,
     note: b.note || '', link: b.link || '',
@@ -221,6 +222,7 @@ async function aiParse(req, env) {
  "start": "HH:MM",              // 開演時刻。不明なら空文字
  "tickets": [{"name": "前売", "price": "3000"}],  // 料金区分ごと。priceは数字のみの文字列
  "drink": "+1drink ¥600",       // ドリンク代の表記。不明なら空文字
+ "pref": "東京都",              // 会場の都道府県。47都道府県の正式名称で。会場名や地名（例: 池袋→東京都、心斎橋→大阪府）から推測してよい。海外なら国名・都市名（例: 台湾・台北）。判断できなければ空文字
  "lineup": "",                  // 出演バンド・アーティストを全て改行(\\n)区切りで。銀幕一楼とTIMECAFE自身も含める。不明なら空文字
  "note": "",                    // 入場順・注意事項など。複数あれば改行(\\n)区切り。なければ空文字
  "link": ""                     // チケットURL等。なければ空文字
@@ -424,6 +426,12 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
       <label>タイトル *</label><input id="title" list="dl-title" autocomplete="off" required>
       <label>会場 *</label><input id="venue" list="dl-venue" autocomplete="off">
       <div class="row">
+        <div><label>都道府県</label>
+          <select id="pref"><option value="">未設定</option></select>
+        </div>
+        <div id="prefLabelWrap" hidden><label>地域（自由入力）</label><input id="prefLabel" placeholder="例: 台湾・台北 / ソウル"></div>
+      </div>
+      <div class="row">
         <div><label>OPEN</label><input id="open" list="dl-open" autocomplete="off" placeholder="18:30"></div>
         <div><label>START</label><input id="start" list="dl-start" autocomplete="off" placeholder="19:00"></div>
       </div>
@@ -509,6 +517,7 @@ button.ghost{border-style:dashed;color:var(--soft);width:100%;margin-top:8px}
 const $ = id => document.getElementById(id);
 const TYPE_LABELS = {band:'バンド（フルメンバー）', band_support:'バンド（keyサポート）', solo_acoustic:'銀幕一楼ソロ弾き語り', solo:'銀幕一楼ソロ'};
 const DOW = ['日','月','火','水','木','金','土'];
+const PREFS = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
 let entries = [];
 
 function msg(text, ok){ const m=$('msg'); m.textContent=text; m.className='msg '+(ok?'ok':'ng'); setTimeout(()=>m.className='msg',4000); }
@@ -544,6 +553,25 @@ function getTickets(){
 }
 $('addTicket').onclick = ()=>ticketRow();
 
+/* ---- 都道府県 ---- */
+(function initPref(){
+  const sel = $('pref');
+  for(const p of PREFS){
+    const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o);
+  }
+  const other = document.createElement('option'); other.value = 'other'; other.textContent = '海外・その他（自由入力）'; sel.appendChild(other);
+})();
+function prefVal(){
+  return $('pref').value === 'other' ? $('prefLabel').value.trim() : $('pref').value;
+}
+function setPref(v){
+  v = String(v || '').trim();
+  if(!v){ $('pref').value = ''; $('prefLabel').value = ''; }
+  else if(PREFS.includes(v)){ $('pref').value = v; $('prefLabel').value = ''; }
+  else { $('pref').value = 'other'; $('prefLabel').value = v; }
+  $('prefLabelWrap').hidden = $('pref').value !== 'other';
+}
+
 /* ---- プレビュー ---- */
 function detailText(e){
   const parts=[];
@@ -558,7 +586,7 @@ function formEntry(){
   return { date:$('date').value, title:$('title').value.trim(), venue:$('venue').value.trim(),
     type:$('type').value, typeLabel:$('typeLabel').value.trim(),
     open:$('open').value.trim(), start:$('start').value.trim(),
-    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), lineup:$('lineup').value.trim(), reserve:$('reserve').checked, note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
+    tickets:getTickets(), images:images.slice(0,4), drink:$('drink').value.trim(), pref:prefVal(), lineup:$('lineup').value.trim(), reserve:$('reserve').checked, note:$('note').value.trim(), link:$('link').value.trim(), publishAt:$('publishAt').value };
 }
 function preview(){
   const e = formEntry();
@@ -567,7 +595,7 @@ function preview(){
   $('preview').innerHTML = '<div class="p-item">'
     + '<div class="p-date">'+(d?'<span class="d">'+d.getDate()+'</span><span class="m">'+d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'</span><span class="w">'+DOW[d.getDay()]+'</span>':'<span class="m">日付未定</span>')+'</div>'
     + '<div><div class="p-title">'+esc(e.title||'タイトル')+'　'+tag+'</div>'
-    + '<div class="p-venue">'+esc(e.venue||'会場')+'</div>'
+    + '<div class="p-venue">'+esc(e.venue||'会場')+(e.pref?'｜'+esc(e.pref):'')+'</div>'
     + (detailText(e)?'<div class="p-detail">'+esc(detailText(e))+'</div>':'')
     + '</div></div>';
   preview2(e);
@@ -578,7 +606,7 @@ function preview2(e){
   const tag = '<span class="tag '+(isFill(e.type)?'fill':'line')+'">'+esc(typeLabelOf(e))+'</span>';
   const rows = [];
   rows.push('<div class="e-row"><dt>出演</dt><dd>'+tag+'</dd></div>');
-  rows.push('<div class="e-row"><dt>会場</dt><dd>'+esc(e.venue||'会場')+'</dd></div>');
+  rows.push('<div class="e-row"><dt>会場</dt><dd>'+esc(e.venue||'会場')+(e.pref?'　<span class="tag line">'+esc(e.pref)+'</span>':'')+'</dd></div>');
   if(e.open||e.start) rows.push('<div class="e-row"><dt>時間</dt><dd>'+[e.open?'OPEN '+e.open:'',e.start?'START '+e.start:''].filter(Boolean).join(' ／ ')+'</dd></div>');
   if((e.tickets||[]).length) rows.push('<div class="e-row"><dt>チケット</dt><dd>'+e.tickets.map(t=>'<span class="e-tk"><span>'+esc(t.name)+'</span><b>¥'+Number(t.price).toLocaleString()+'</b></span>').join('')+'</dd></div>');
   if(e.drink) rows.push('<div class="e-row"><dt>ドリンク</dt><dd>'+esc(e.drink)+'</dd></div>');
@@ -592,8 +620,9 @@ function preview2(e){
     + (e.reserve?' <span class="e-btn" style="background:transparent;border:1px solid var(--gold);color:var(--ink)">チケット取り置きフォーム</span>':'')
     + '</div></div>';
 }
-['date','title','venue','open','start','drink','lineup','note','link','typeLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
+['date','title','venue','open','start','drink','lineup','note','link','typeLabel','prefLabel','publishAt'].forEach(id=>$(id).addEventListener('input', preview));
 $('type').addEventListener('change', ()=>{ $('typeLabelWrap').hidden = $('type').value!=='other'; preview(); });
+$('pref').addEventListener('change', ()=>{ $('prefLabelWrap').hidden = $('pref').value!=='other'; preview(); });
 $('reserve').addEventListener('change', preview);
 
 /* ---- 入力候補（過去の登録から） ---- */
@@ -676,6 +705,7 @@ function applyParsed(r){
   if(r.open) $('open').value = r.open;
   if(r.start) $('start').value = r.start;
   if(r.drink) $('drink').value = r.drink;
+  if(r.pref) setPref(r.pref);
   if(r.lineup) $('lineup').value = r.lineup;
   if(r.note) $('note').value = r.note;
   if(r.link) $('link').value = r.link;
@@ -743,7 +773,7 @@ async function refresh(){
     return '<div class="item">'
       + '<span class="d">'+e.date.replaceAll('-','.')+'</span>'
       + '<span class="badge '+(isFill(e.type)?'fill':'line')+'">'+esc(typeLabelOf(e))+'</span>'
-      + '<div class="t">'+esc(e.title)+'<small>'+esc(e.venue)
+      + '<div class="t">'+esc(e.title)+'<small>'+esc(e.venue)+(e.pref?'（'+esc(e.pref)+'）':'')
       + (e.open?' ｜ OPEN '+e.open:'')+(e.start?' / START '+e.start:'')
       + (fee?' ｜ '+esc(fee):'')+'</small></div>'
       + (waiting?'<span class="badge wait">'+e.publishAt.replace('T',' ')+' 解禁</span>':'')
@@ -758,6 +788,7 @@ window.edit = id => {
   const e = entries.find(x=>x.id===id); if(!e) return;
   ['date','title','venue','type','typeLabel','open','start','drink','lineup','note','link','publishAt'].forEach(k=>$(k).value=e[k]||'');
   $('typeLabelWrap').hidden = e.type!=='other';
+  setPref(e.pref);
   $('tickets').innerHTML='';
   (e.tickets&&e.tickets.length ? e.tickets : [{name:'前売',price:''},{name:'当日',price:''}]).forEach(t=>ticketRow(t.name,t.price));
   $('id').value = e.id;
@@ -777,6 +808,7 @@ window.del = async id => {
 function resetForm(){
   $('f').reset(); $('id').value='';
   $('typeLabelWrap').hidden=true;
+  $('prefLabelWrap').hidden=true;
   $('tickets').innerHTML=''; ticketRow('前売',''); ticketRow('当日','');
   images = []; newImageIds = new Set(); renderThumbs();
   $('formTitle').textContent='公演を追加'; $('submitBtn').textContent='追加する'; $('cancelEdit').hidden=true;

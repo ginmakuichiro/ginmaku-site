@@ -410,7 +410,17 @@ footer .sns a:hover{color:var(--gold)}
   color:var(--screen);font-size:.8rem;letter-spacing:.18em;
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
   white-space:nowrap;
-  animation:visitor-marquee 18s linear infinite;
+  /* steps()でカクカク動かして平成レトロ感を出す */
+  animation:visitor-marquee 18s steps(60,end) infinite;
+}
+.v-kiriban{
+  margin-top:10px;color:var(--gold);font-size:.85rem;font-weight:700;
+  letter-spacing:.12em;
+  animation:kiriban-blink 1s steps(2,jump-none) infinite;
+}
+@keyframes kiriban-blink{
+  from{opacity:1}
+  to{opacity:0}
 }
 /* 平成レトロなマーキー: 画面右端から左端へ */
 @keyframes visitor-marquee{

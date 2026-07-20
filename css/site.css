@@ -410,13 +410,16 @@ footer .sns a:hover{color:var(--gold)}
   color:var(--screen);font-size:.8rem;letter-spacing:.18em;
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
   white-space:nowrap;
-  /* steps()でカクカク動かして平成レトロ感を出す */
-  animation:visitor-marquee 18s steps(60,end) infinite;
+  /* steps()でカクカク動かして平成レトロ感を出す（1コマ0.5秒） */
+  animation:visitor-marquee 30s steps(60,end) infinite;
 }
 .v-kiriban{
   margin-top:10px;color:var(--gold);font-size:.85rem;font-weight:700;
   letter-spacing:.12em;
   animation:kiriban-blink 1s steps(2,jump-none) infinite;
+}
+.v-kiriban-sub{
+  display:block;margin-top:4px;color:var(--screen);font-size:.75rem;font-weight:400;
 }
 @keyframes kiriban-blink{
   from{opacity:1}

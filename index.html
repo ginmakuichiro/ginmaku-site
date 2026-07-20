@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/site.css?v=9">
+<link rel="stylesheet" href="/css/site.css?v=10">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
 
 <div class="visitor-strip" id="visitor" hidden>
   <p>あなたは <span class="v-digits" id="visitor-digits"></span> 人目のご贔屓さま🎉</p>
-  <div class="v-kiriban" id="visitor-kiriban" hidden>＼(^o^)／ キリ番ゲット！おめでとうございます！ ＼(^o^)／</div>
+  <div class="v-kiriban" id="visitor-kiriban" hidden>＼(^o^)／ キリ番ゲット！おめでとうございます！ ＼(^o^)／<span class="v-kiriban-sub">スクショしてSNSにアップしよう！</span></div>
 </div>
 
 <div class="hero" id="top">
@@ -194,9 +194,9 @@ function renderNews(data){
     const digits = String(d.count).split("")
       .map(n=>`<span class="v-d">${n}</span>`).join("");
     document.getElementById("visitor-digits").innerHTML = digits;
-    /* キリ番判定: 100の倍数、または3桁以上のゾロ目 */
-    const c = d.count, s = String(c);
-    const kiri = (c >= 100 && c % 100 === 0) || (s.length >= 3 && [...s].every(x => x === s[0]));
+    /* キリ番判定: 期間限定で全番号キリ番扱い（通常判定は下行に温存）
+       const kiri = (c >= 100 && c % 100 === 0) || (s.length >= 3 && [...s].every(x => x === s[0])); */
+    const kiri = true;
     if(kiri) document.getElementById("visitor-kiriban").hidden = false;
     document.getElementById("visitor").hidden = false;
   }catch(e){ /* カウンター取得失敗時は非表示のまま */ }

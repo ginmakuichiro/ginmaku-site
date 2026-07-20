@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/site.css?v=7">
+<link rel="stylesheet" href="/css/site.css?v=8">
 </head>
 <body>
 
@@ -190,7 +190,7 @@ function renderNews(data){
 (async ()=>{
   try{
     const d = await (await fetch("https://admin.ginmakuichiro.net/api/count", {method:"POST"})).json();
-    const digits = String(d.count).padStart(7,"0").split("")
+    const digits = String(d.count).split("")
       .map(n=>`<span class="v-d">${n}</span>`).join("");
     document.getElementById("visitor-digits").innerHTML = digits;
     document.getElementById("visitor").hidden = false;

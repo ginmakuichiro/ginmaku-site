@@ -403,11 +403,19 @@ footer .sns a:hover{color:var(--gold)}
 .visitor-strip{
   background:var(--curtain-deep);
   /* アー写が-46pxはみ出して重なるぶん上に余白を取る */
-  text-align:center;padding:60px 20px 20px;
+  text-align:center;padding:60px 0 20px;
+  overflow:hidden;
 }
 .visitor-strip p{
   color:var(--screen);font-size:.8rem;letter-spacing:.18em;
-  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  white-space:nowrap;
+  animation:visitor-marquee 18s linear infinite;
+}
+/* 平成レトロなマーキー: 画面右端から左端へ */
+@keyframes visitor-marquee{
+  from{transform:translateX(50vw) translateX(50%)}
+  to{transform:translateX(-50vw) translateX(-50%)}
 }
 .v-digits{display:inline-flex;gap:3px}
 .v-d{

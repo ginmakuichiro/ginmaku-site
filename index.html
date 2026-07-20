@@ -194,9 +194,8 @@ function renderNews(data){
     const digits = String(d.count).split("")
       .map(n=>`<span class="v-d">${n}</span>`).join("");
     document.getElementById("visitor-digits").innerHTML = digits;
-    /* キリ番判定: 期間限定で全番号キリ番扱い（通常判定は下行に温存）
-       const kiri = (c >= 100 && c % 100 === 0) || (s.length >= 3 && [...s].every(x => x === s[0])); */
-    const kiri = true;
+    /* キリ番判定: 50の倍数（100以上）、または3桁以上のゾロ目 */
+    const kiri = (c >= 100 && c % 50 === 0) || (s.length >= 3 && [...s].every(x => x === s[0]));
     if(kiri) document.getElementById("visitor-kiriban").hidden = false;
     document.getElementById("visitor").hidden = false;
   }catch(e){ /* カウンター取得失敗時は非表示のまま */ }

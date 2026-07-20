@@ -38,8 +38,8 @@ function schedItemHtml(e, extraClass=""){
   const title = url ? `<a class="title-link" href="${url}">${e.title}</a>` : e.title;
   return `<li class="sched-item ${extraClass}">
     <div class="s-date">
-      <span class="d">${d.getDate()}</span>
-      <span class="m">${d.getFullYear()}.${pad(d.getMonth()+1)}</span>
+      <span class="d">${d.getMonth()+1}.${d.getDate()}</span>
+      <span class="m">${d.getFullYear()}</span>
       <span class="w">${DOW[d.getDay()]}</span>
     </div>
     <div class="s-main">

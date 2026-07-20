@@ -402,7 +402,8 @@ footer .sns a:hover{color:var(--gold)}
 /* ---------- visitor counter ---------- */
 .visitor-strip{
   background:var(--curtain-deep);
-  text-align:center;padding:14px 20px 20px;
+  /* アー写が-46pxはみ出して重なるぶん上に余白を取る */
+  text-align:center;padding:60px 20px 20px;
 }
 .visitor-strip p{
   color:var(--screen);font-size:.8rem;letter-spacing:.18em;

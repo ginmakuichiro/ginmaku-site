@@ -613,7 +613,7 @@ function preview2(e){
   if(e.lineup) rows.push('<div class="e-row"><dt>出演</dt><dd style="white-space:pre-wrap">'+esc(e.lineup)+'</dd></div>');
   if(e.note) rows.push('<div class="e-row"><dt>備考</dt><dd style="white-space:pre-wrap">'+esc(e.note)+'</dd></div>');
   $('preview2').innerHTML = '<div class="e-ticket">'
-    + '<div class="e-head"><span class="e-stub">ADMIT ONE</span><p class="e-date">'+dateStr+'</p><h3>'+esc(e.title||'タイトル')+'</h3></div>'
+    + '<div class="e-head"><p class="e-date">'+dateStr+'</p><h3>'+esc(e.title||'タイトル')+'</h3></div>'
     + '<div class="e-body"><dl>'+rows.join('')+'</dl>'
     + ((e.images||[]).length?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+e.images.map(id=>'<img src="/img/'+id+'" style="width:90px;height:90px;object-fit:cover;border-radius:4px;border:1px solid var(--line)">').join('')+'</div>':'')
     + (e.link?'<span class="e-btn">チケット・詳細はこちら</span>':'')

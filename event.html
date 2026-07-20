@@ -100,7 +100,6 @@ function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;"
   box.innerHTML = `
     <div class="event-ticket">
       <div class="et-head">
-        <span class="stub">ADMIT ONE</span>
         <p class="date">${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${DOW[d.getDay()]}曜日${past ? "（終了）" : ""}</p>
         <h1>${esc(e.title)}</h1>
       </div>

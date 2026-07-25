@@ -451,9 +451,9 @@ function drawDialog() {
   ctx.font = 'bold 8px sans-serif';
   ctx.fillText(dialog.name, bx + 7, by + 11);
   ctx.fillStyle = '#ffffff';
-  ctx.font = '8px sans-serif';
+  ctx.font = '7px sans-serif';
   const text = dialog.lines[dialog.lineIdx].slice(0, Math.floor(dialog.chars));
-  wrapText(text, bw - 14, bx + 7, by + 23, 11);
+  wrapText(text, bw - 18, bx + 7, by + 21, 9);
   const lineDone = Math.floor(dialog.chars) >= dialog.lines[dialog.lineIdx].length;
   if (dialog.phase === 'lines' && lineDone && (Date.now() / 400 | 0) % 2) {
     ctx.fillStyle = '#f2d178';

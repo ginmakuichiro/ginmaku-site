@@ -8,6 +8,8 @@
  * KV: DATA（key "schedule" に全公演の配列を保存）
  */
 
+import EDITOR_HTML from './backstage-editor.html';
+
 const COOKIE = 'gnk_session';
 const SESSION_DAYS = 60;
 
@@ -18,6 +20,8 @@ export default {
 
     if (p === '/data/schedule.json') return publicSchedule(env);
     if (p === '/data/news.json') return publicNews(env);
+    if (p === '/data/backstage/scenario.json') return publicBackstage(env, url);
+    if (p === '/backstage') return new Response(EDITOR_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     if (p.startsWith('/img/')) return serveImage(env, p.slice(5));
     if (p === '/api/count') {
       const cors = { 'access-control-allow-origin': '*' };
@@ -46,6 +50,18 @@ export default {
       const m = p.match(/^\/api\/schedule\/([\w-]+)$/);
       if (m && req.method === 'PUT') return upsert(req, env, m[1]);
       if (m && req.method === 'DELETE') return remove(env, m[1]);
+      if (p === '/api/backstage/draft' && req.method === 'GET') {
+        const d = (await env.DATA.get('bs_draft')) || (await env.DATA.get('bs_published'));
+        if (!d) return json({ error: 'empty' }, 404);
+        return new Response(d, { headers: { 'content-type': 'application/json; charset=utf-8' } });
+      }
+      if (p === '/api/backstage/draft' && req.method === 'PUT') return saveBackstageDraft(req, env);
+      if (p === '/api/backstage/publish' && req.method === 'POST') {
+        const d = await env.DATA.get('bs_draft');
+        if (!d) return json({ error: '下書きがありません' }, 404);
+        await env.DATA.put('bs_published', d);
+        return json({ ok: true });
+      }
       if (p === '/api/news' && req.method === 'GET') return json(await loadNews(env));
       if (p === '/api/news' && req.method === 'POST') return upsertNews(req, env, null);
       const mn = p.match(/^\/api\/news\/([\w-]+)$/);
@@ -82,6 +98,29 @@ async function publicSchedule(env) {
     'access-control-allow-origin': '*',
     'cache-control': 'public, max-age=60'
   });
+}
+
+/* ---------- Backstage Tour（楽屋RPG）シナリオ ---------- */
+// KV: bs_draft（下書き） / bs_published（公開版）。ゲームは公開版を読む
+
+async function publicBackstage(env, url) {
+  const key = url.searchParams.get('draft') === '1' ? 'bs_draft' : 'bs_published';
+  const d = await env.DATA.get(key);
+  if (!d) return json({ error: 'not published' }, 404, { 'access-control-allow-origin': '*' });
+  return new Response(d, {
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'access-control-allow-origin': '*',
+      'cache-control': 'no-cache'
+    }
+  });
+}
+
+async function saveBackstageDraft(req, env) {
+  const b = await req.json().catch(() => null);
+  if (!b || !b.layout || !b.npcs || !b.objects) return json({ error: 'シナリオ形式が不正です' }, 400);
+  await env.DATA.put('bs_draft', JSON.stringify(b));
+  return json({ ok: true });
 }
 
 const TYPES = ['band', 'band_support', 'solo_acoustic', 'solo', 'other'];

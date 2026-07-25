@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シナリオエディタ - 楽屋RPG</title>
+<style>
+  :root {
+    --bg: #1a1720; --panel: #262230; --panel2: #322d3e;
+    --line: #453f54; --text: #dde4e8; --dim: #9a93ab;
+    --accent: #e3b23c; --red: #c0392b; --blue: #9ee1ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    font-size: 14px;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { font-size: 15px; margin: 0 auto 0 0; color: var(--accent); }
+  button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  #status { font-size: 12px; color: var(--dim); width: 100%; }
+  #status.draft { color: var(--accent); }
+  main { display: flex; gap: 0; min-height: calc(100vh - 60px); }
+  #sidebar {
+    width: 210px; flex-shrink: 0; background: var(--panel);
+    border-right: 1px solid var(--line); padding: 10px 0;
+  }
+  #sidebar h2 { font-size: 11px; color: var(--dim); margin: 10px 14px 4px; text-transform: uppercase; }
+  .speaker-btn {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    border-left: 3px solid transparent; border-radius: 0;
+    padding: 7px 14px; color: var(--text); cursor: pointer; font-size: 13px;
+  }
+  .speaker-btn:hover { background: var(--panel2); }
+  .speaker-btn.active { background: var(--panel2); border-left-color: var(--accent); color: var(--accent); }
+  #content { flex: 1; padding: 16px 20px 60px; max-width: 760px; }
+  .name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .name-row label { color: var(--dim); font-size: 12px; }
+  input[type=text], textarea {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; font-size: 13px; font-family: inherit;
+  }
+  input[type=text]:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  .name-row input { flex: 1; font-size: 15px; }
+  .topic {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; margin-bottom: 12px;
+  }
+  .topic-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .topic-head .idx { color: var(--accent); font-weight: bold; font-size: 13px; margin-right: auto; }
+  .field { margin-bottom: 8px; }
+  .field label { display: block; font-size: 11px; color: var(--dim); margin-bottom: 3px; }
+  .field textarea { width: 100%; resize: vertical; min-height: 60px; line-height: 1.6; }
+  .cond-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .cond-row .field { flex: 1; min-width: 140px; margin-bottom: 0; }
+  .cond-row input { width: 100%; }
+  .once-label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .choices { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .choice {
+    background: var(--panel2); border-radius: 6px; padding: 8px; margin-bottom: 6px;
+  }
+  .choice .row1 { display: flex; gap: 8px; margin-bottom: 6px; }
+  .choice .row1 input { flex: 1; }
+  .choice textarea { width: 100%; min-height: 40px; }
+  .hint { font-size: 11px; color: var(--dim); line-height: 1.7; margin: 16px 0; background: var(--panel); border-radius: 8px; padding: 10px 12px; }
+  .hint code { color: var(--blue); }
+  /* 配置エディタ */
+  #layoutWrap { max-width: 100%; }
+  #layoutCanvas {
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    border: 2px solid var(--line); border-radius: 4px; cursor: grab;
+    max-width: 100%; touch-action: none;
+  }
+  #layoutCanvas.dragging { cursor: grabbing; }
+  .layout-panel {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; margin-top: 10px;
+  }
+  .layout-panel .sel-name { color: var(--accent); font-weight: bold; min-width: 110px; }
+  .layout-panel input[type=number] {
+    width: 64px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px;
+  }
+  .layout-panel select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 6px; font-size: 13px;
+  }
+  @media (max-width: 640px) {
+    main { flex-direction: column; }
+    #sidebar { width: 100%; display: flex; flex-wrap: wrap; padding: 6px; border-right: none; border-bottom: 1px solid var(--line); }
+    #sidebar h2 { width: 100%; }
+    .speaker-btn { width: auto; border-left: none; border-radius: 6px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎤 Backstage Tour 編集</h1>
+  <button id="btnSave">下書き保存</button>
+  <button id="btnPreview">▶ プレビュー</button>
+  <button id="btnPublish" class="primary">🚀 公開</button>
+  <button id="btnExport">バックアップ書き出し</button>
+  <div id="status"></div>
+</header>
+<main>
+  <nav id="sidebar"></nav>
+  <section id="content"></section>
+</main>
+<script>
+// 管理画面版: 下書きはKVに保存し、「公開」で全訪問者に反映される
+const SITE = 'https://ginmakuichiro.net';
+const ASSET_BASE = SITE + '/backstage/assets/';
+let data = null;
+let currentType = 'npcs';
+let currentId = null;
+
+const $ = s => document.querySelector(s);
+const statusEl = $('#status');
+
+function setStatus(msg, draft) {
+  statusEl.textContent = msg;
+  statusEl.className = draft ? 'draft' : '';
+}
+
+function showLogin() {
+  const c = $('#content');
+  c.innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'hint';
+  box.innerHTML = '<b>ログインが必要です</b><br>管理画面のパスワードを入力してください。';
+  const form = document.createElement('div');
+  form.style.marginTop = '10px';
+  const pw = document.createElement('input');
+  pw.type = 'password';
+  pw.placeholder = 'パスワード';
+  const btn = document.createElement('button');
+  btn.className = 'primary';
+  btn.style.marginLeft = '8px';
+  btn.textContent = 'ログイン';
+  const doLogin = async () => {
+    const r = await fetch('/api/login', { method: 'POST', body: JSON.stringify({ password: pw.value }) });
+    if (r.ok) { setStatus('ログインしました'); init(); }
+    else setStatus('パスワードが違います');
+  };
+  btn.onclick = doLogin;
+  pw.onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+  form.append(pw, btn);
+  box.appendChild(form);
+  c.appendChild(box);
+}
+
+async function init() {
+  const r = await fetch('/api/backstage/draft');
+  if (r.status === 401) { showLogin(); return; }
+  if (r.ok) {
+    data = await r.json();
+    setStatus('下書きを読み込みました');
+  } else {
+    // まだKVに何もない → 現在の静的scenario.jsonを初期データとして読み込む
+    data = await fetch(SITE + '/backstage/scenario.json', { cache: 'no-cache' }).then(x => x.json());
+    setStatus('公開中の scenario.json を初期データとして読み込みました（下書き保存でKVに移行）');
+  }
+  currentId = Object.keys(data.npcs)[0];
+  renderSidebar();
+  renderContent();
+}
+
+function renderSidebar() {
+  const nav = $('#sidebar');
+  nav.innerHTML = '';
+  const h0 = document.createElement('h2');
+  h0.textContent = 'マップ';
+  nav.appendChild(h0);
+  const lb = document.createElement('button');
+  lb.className = 'speaker-btn' + (currentType === 'layout' ? ' active' : '');
+  lb.textContent = '🗺 配置（アセットの場所）';
+  lb.onclick = () => { currentType = 'layout'; renderSidebar(); renderContent(); };
+  nav.appendChild(lb);
+  const groups = [['npcs', 'メンバー'], ['objects', '調べられる家具']];
+  for (const [type, label] of groups) {
+    const h = document.createElement('h2');
+    h.textContent = label;
+    nav.appendChild(h);
+    for (const id of Object.keys(data[type])) {
+      const b = document.createElement('button');
+      b.className = 'speaker-btn' + (type === currentType && id === currentId ? ' active' : '');
+      b.textContent = data[type][id].name || id;
+      b.onclick = () => { currentType = type; currentId = id; renderSidebar(); renderContent(); };
+      nav.appendChild(b);
+    }
+  }
+}
+
+function field(labelText, el) {
+  const d = document.createElement('div');
+  d.className = 'field';
+  const l = document.createElement('label');
+  l.textContent = labelText;
+  d.append(l, el);
+  return d;
+}
+
+function renderContent() {
+  const c = $('#content');
+  c.innerHTML = '';
+  if (currentType === 'layout') { renderLayout(c); return; }
+  const speaker = data[currentType][currentId];
+
+  // 名前
+  const nameRow = document.createElement('div');
+  nameRow.className = 'name-row';
+  const nameLabel = document.createElement('label');
+  nameLabel.textContent = '表示名';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.value = speaker.name || '';
+  nameInput.oninput = () => { speaker.name = nameInput.value; };
+  nameInput.onchange = renderSidebar;
+  nameRow.append(nameLabel, nameInput);
+  c.appendChild(nameRow);
+
+  // トピック一覧
+  (speaker.topics || []).forEach((t, ti) => {
+    const card = document.createElement('div');
+    card.className = 'topic';
+
+    const head = document.createElement('div');
+    head.className = 'topic-head';
+    const idx = document.createElement('span');
+    idx.className = 'idx';
+    idx.textContent = `会話 ${ti + 1}`;
+    head.appendChild(idx);
+    const mk = (txt, fn, cls) => {
+      const b = document.createElement('button');
+      b.className = 'small' + (cls ? ' ' + cls : '');
+      b.textContent = txt;
+      b.onclick = fn;
+      return b;
+    };
+    head.append(
+      mk('↑', () => { if (ti > 0) { const a = speaker.topics; [a[ti-1], a[ti]] = [a[ti], a[ti-1]]; renderContent(); } }),
+      mk('↓', () => { const a = speaker.topics; if (ti < a.length - 1) { [a[ti+1], a[ti]] = [a[ti], a[ti+1]]; renderContent(); } }),
+      mk('削除', () => { if (confirm(`会話 ${ti + 1} を削除しますか？`)) { speaker.topics.splice(ti, 1); renderContent(); } })
+    );
+    card.appendChild(head);
+
+    // 条件・フラグ・一度きり
+    const condRow = document.createElement('div');
+    condRow.className = 'cond-row';
+    const condIn = document.createElement('input');
+    condIn.type = 'text';
+    condIn.placeholder = '例: knows_pudding / !promised_live';
+    condIn.value = t.if || '';
+    condIn.oninput = () => { if (condIn.value.trim()) t.if = condIn.value.trim(); else delete t.if; };
+    condRow.appendChild(field('表示条件（フラグ名。!で否定。空欄=いつでも）', condIn));
+    const setIn = document.createElement('input');
+    setIn.type = 'text';
+    setIn.placeholder = '例: heard_schedule';
+    setIn.value = t.set || '';
+    setIn.oninput = () => { if (setIn.value.trim()) t.set = setIn.value.trim(); else delete t.set; };
+    condRow.appendChild(field('会話後に立てるフラグ（空欄=なし）', setIn));
+    const onceLabel = document.createElement('label');
+    onceLabel.className = 'once-label';
+    const onceCb = document.createElement('input');
+    onceCb.type = 'checkbox';
+    onceCb.checked = !!t.once;
+    onceCb.onchange = () => { if (onceCb.checked) t.once = true; else delete t.once; };
+    onceLabel.append(onceCb, '一度だけ');
+    condRow.appendChild(onceLabel);
+    card.appendChild(condRow);
+
+    // セリフ
+    const ta = document.createElement('textarea');
+    ta.value = (t.lines || []).join('\n');
+    ta.oninput = () => { t.lines = ta.value.split('\n').filter(l => l.trim() !== ''); };
+    card.appendChild(field('セリフ（1行 = 1ページ）', ta));
+
+    // 選択肢
+    const chDiv = document.createElement('div');
+    chDiv.className = 'choices';
+    (t.choices || []).forEach((ch, ci) => {
+      const box = document.createElement('div');
+      box.className = 'choice';
+      const row1 = document.createElement('div');
+      row1.className = 'row1';
+      const labelIn = document.createElement('input');
+      labelIn.type = 'text';
+      labelIn.placeholder = '選択肢の文言';
+      labelIn.value = ch.label || '';
+      labelIn.oninput = () => { ch.label = labelIn.value; };
+      const chSetIn = document.createElement('input');
+      chSetIn.type = 'text';
+      chSetIn.placeholder = '選ぶと立つフラグ（任意）';
+      chSetIn.value = ch.set || '';
+      chSetIn.oninput = () => { if (chSetIn.value.trim()) ch.set = chSetIn.value.trim(); else delete ch.set; };
+      const chUrlIn = document.createElement('input');
+      chUrlIn.type = 'text';
+      chUrlIn.placeholder = '会話後の移動先URL（任意。例: /）';
+      chUrlIn.value = ch.url || '';
+      chUrlIn.oninput = () => { if (chUrlIn.value.trim()) ch.url = chUrlIn.value.trim(); else delete ch.url; };
+      row1.append(labelIn, chSetIn, chUrlIn,
+        mk('削除', () => { t.choices.splice(ci, 1); if (!t.choices.length) delete t.choices; renderContent(); }));
+      const chTa = document.createElement('textarea');
+      chTa.placeholder = '選んだ後の返事（1行 = 1ページ）';
+      chTa.value = (ch.lines || []).join('\n');
+      chTa.oninput = () => { ch.lines = chTa.value.split('\n').filter(l => l.trim() !== ''); };
+      box.append(row1, chTa);
+      chDiv.appendChild(box);
+    });
+    chDiv.appendChild(mk('+ 選択肢を追加', () => {
+      t.choices = t.choices || [];
+      t.choices.push({ label: '', lines: [] });
+      renderContent();
+    }));
+    card.appendChild(chDiv);
+
+    c.appendChild(card);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ 会話を追加';
+  addBtn.onclick = () => {
+    speaker.topics = speaker.topics || [];
+    speaker.topics.push({ lines: [''] });
+    renderContent();
+  };
+  c.appendChild(addBtn);
+
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.innerHTML = `
+    <b>使い方</b><br>
+    ・<b>一度だけ</b>の会話（イベント）が最優先。それ以外は条件を満たす会話が、話しかけるたびに上から順番に切り替わります。<br>
+    ・「〇〇に話した後だけ変化」させるには：話す側の会話に <code>フラグ名</code>（会話後に立てるフラグ）を入れ、変化させたい側の会話の表示条件に同じ <code>フラグ名</code> を入れます。<br>
+    ・選択肢で受け答えを変えるには：選択肢にフラグを設定し、別の会話の表示条件でそのフラグを参照します。<br>
+    ・セリフに使えるプレースホルダ： <code>{{next_live}}</code>＝直近ライブ3件 / <code>{{news}}</code>＝最新ニュース3件 / <code>{{visitors}}</code>＝サイト訪問者数 / <code>{{live_countdown}}</code>＝次のライブまで「あと◯日」 / <code>{{weather}}</code>＝今の東京の天気。<br>
+    ・表示条件に使える自動フラグ： <code>time_morning</code>(5-10時) <code>time_day</code>(11-17時) <code>time_evening</code>(18-22時) <code>time_night</code>(23-4時) / <code>live_today</code> <code>live_tomorrow</code> <code>live_soon</code>(7日以内) / <code>weather_clear</code> <code>weather_cloudy</code> <code>weather_rain</code> <code>weather_snow</code>。<br>
+    ・<b>下書き保存</b>→<b>プレビュー</b>で確認し、<b>公開</b>を押すと全訪問者に即反映されます。`;
+  c.appendChild(hint);
+}
+
+// ---- 配置エディタ ----
+let GW = 256, GH = 176, GWALL = 48; // renderLayout時に data.layout.room から読み込む
+const SCALE = 3;
+const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug'];
+const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
+const PLACEABLE = ROOM_IMGS.filter(n => !n.startsWith('tile_'));
+const imgs = {};
+let imgsLoaded = 0;
+const imgsTotal = ROOM_IMGS.length + MEMBER_IMGS.length;
+for (const n of ROOM_IMGS) {
+  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}room/${n}.png`;
+  im.onload = () => { imgsLoaded++; drawLayout(); };
+  imgs[n] = im;
+}
+for (const n of MEMBER_IMGS) {
+  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}member/${n}.png`;
+  im.onload = () => { imgsLoaded++; drawLayout(); };
+  imgs[n] = im;
+}
+
+let lsel = null;      // {type:'furniture'|'npc'|'player', idx}
+let ldrag = null;     // {dx, dy}
+let lctx = null;
+
+function selItem() {
+  if (!lsel) return null;
+  const L = data.layout;
+  if (lsel.type === 'furniture') return L.furniture[lsel.idx];
+  if (lsel.type === 'npc') return L.npcs[lsel.idx];
+  return L.player;
+}
+function itemImg(it, type) {
+  if (type === 'furniture') return imgs[it.n];
+  if (type === 'npc') return imgs[it.id];
+  return imgs.you;
+}
+function selLabel() {
+  if (!lsel) return 'なし（クリックで選択）';
+  if (lsel.type === 'player') return 'プレイヤー開始位置';
+  if (lsel.type === 'npc') {
+    const id = data.layout.npcs[lsel.idx].id;
+    return (data.npcs[id] && data.npcs[id].name) || id;
+  }
+  const n = data.layout.furniture[lsel.idx].n;
+  return (data.objects[n] && data.objects[n].name) || n;
+}
+
+function drawLayout() {
+  if (!lctx || !data || !data.layout) return;
+  const g = lctx;
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, GW, GH);
+  // 床と壁
+  for (let x = 0; x < GW; x += 16) {
+    for (let y = 0; y < GWALL; y += 16) g.drawImage(imgs.tile_wall, x, y);
+    for (let y = GWALL; y < GH; y += 16) g.drawImage(imgs.tile_floor, x, y);
+  }
+  const L = data.layout;
+  for (const f of L.furniture) {
+    g.drawImage(imgs[f.n], f.x, f.y);
+    if (f.examine) { // 調べられる家具に水色マーカー
+      g.fillStyle = '#9ee1ff';
+      g.fillRect(f.x + Math.floor(imgs[f.n].width / 2) - 1, f.y - 3, 3, 2);
+    }
+  }
+  const chars = [...L.npcs.map((n, i) => ({ ...n, _t: 'npc', _i: i })), { ...L.player, id: 'you', _t: 'player', _i: 0 }]
+    .sort((a, b) => a.y - b.y);
+  for (const s of chars) g.drawImage(imgs[s.id], s.x, s.y);
+  // 選択枠
+  const it = selItem();
+  if (it) {
+    const im = itemImg(it, lsel.type);
+    g.strokeStyle = '#f2d178';
+    g.lineWidth = 1;
+    g.strokeRect(it.x - 1.5, it.y - 1.5, im.width + 3, im.height + 3);
+  }
+}
+
+function canvasPos(e) {
+  const r = lctx.canvas.getBoundingClientRect();
+  const p = e.touches ? e.touches[0] : e;
+  return {
+    x: (p.clientX - r.left) / (r.width / GW),
+    y: (p.clientY - r.top) / (r.height / GH),
+  };
+}
+
+function pickAt(x, y) {
+  const L = data.layout;
+  const hit = (it, im) => x >= it.x && x < it.x + im.width && y >= it.y && y < it.y + im.height;
+  if (hit(L.player, imgs.you)) return { type: 'player', idx: 0 };
+  for (let i = L.npcs.length - 1; i >= 0; i--) {
+    if (hit(L.npcs[i], imgs[L.npcs[i].id])) return { type: 'npc', idx: i };
+  }
+  for (let i = L.furniture.length - 1; i >= 0; i--) {
+    if (hit(L.furniture[i], imgs[L.furniture[i].n])) return { type: 'furniture', idx: i };
+  }
+  return null;
+}
+
+function renderLayout(c) {
+  if (!data.layout.room) data.layout.room = { w: 256, h: 176, wall: 48 };
+  const room = data.layout.room;
+  GW = room.w; GH = room.h; GWALL = room.wall;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'layoutWrap';
+  const cv = document.createElement('canvas');
+  cv.id = 'layoutCanvas';
+  cv.width = GW; cv.height = GH;
+  cv.style.width = (GW * SCALE) + 'px';
+  lctx = cv.getContext('2d');
+  wrap.appendChild(cv);
+
+  // 部屋サイズ
+  const roomRow = document.createElement('div');
+  roomRow.className = 'layout-panel';
+  const mkNum = (label, key, min, max) => {
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.step = 16; inp.min = min; inp.max = max;
+    inp.value = room[key];
+    inp.onchange = () => {
+      let v = Math.round((+inp.value || min) / 16) * 16; // 16px（タイル）単位
+      v = Math.min(max, Math.max(min, v));
+      inp.value = v;
+      room[key] = v;
+      GW = room.w; GH = room.h; GWALL = room.wall;
+      cv.width = GW; cv.height = GH;
+      cv.style.width = (GW * SCALE) + 'px';
+      lctx.imageSmoothingEnabled = false;
+      drawLayout();
+    };
+    roomRow.append(label + ':', inp);
+    return inp;
+  };
+  mkNum('部屋の幅', 'w', 176, 512);
+  mkNum('部屋の高さ', 'h', 128, 400);
+  mkNum('壁の高さ', 'wall', 16, 96);
+  roomRow.append('（16px＝タイル1枚単位）');
+
+  // 選択パネル
+  const panel = document.createElement('div');
+  panel.className = 'layout-panel';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'sel-name';
+  const xIn = document.createElement('input');
+  const yIn = document.createElement('input');
+  xIn.type = yIn.type = 'number';
+  const delBtn = document.createElement('button');
+  delBtn.className = 'small';
+  delBtn.textContent = 'この家具を削除';
+  const dupBtn = document.createElement('button');
+  dupBtn.className = 'small';
+  dupBtn.textContent = '複製';
+  const exLabel = document.createElement('label');
+  exLabel.className = 'once-label';
+  const exCb = document.createElement('input');
+  exCb.type = 'checkbox';
+  exLabel.append(exCb, '調べられる');
+  panel.append(nameEl, 'X:', xIn, 'Y:', yIn, exLabel, dupBtn, delBtn);
+
+  exCb.onchange = () => {
+    const it = selItem();
+    if (!it || lsel.type !== 'furniture') return;
+    if (exCb.checked) {
+      it.examine = true;
+      // 会話データがなければ雛形を作る → シナリオエディタで編集できる
+      if (!data.objects[it.n]) {
+        data.objects[it.n] = { name: it.n, topics: [{ lines: ['……'] }] };
+      }
+      renderSidebar();
+    } else {
+      delete it.examine;
+    }
+    drawLayout();
+  };
+
+  // 家具追加
+  const addRow = document.createElement('div');
+  addRow.className = 'layout-panel';
+  const sel = document.createElement('select');
+  for (const n of PLACEABLE) {
+    const o = document.createElement('option');
+    o.value = n;
+    o.textContent = (data.objects[n] && data.objects[n].name) ? `${data.objects[n].name} (${n})` : n;
+    sel.appendChild(o);
+  }
+  const addBtn = document.createElement('button');
+  addBtn.className = 'small';
+  addBtn.textContent = '+ マップに追加';
+  addBtn.onclick = () => {
+    data.layout.furniture.push({ n: sel.value, x: 110, y: 76 });
+    lsel = { type: 'furniture', idx: data.layout.furniture.length - 1 };
+    syncPanel(); drawLayout();
+  };
+  addRow.append('家具を追加:', sel, addBtn);
+
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.innerHTML = `<b>配置の編集</b><br>
+    ・スプライトをドラッグで移動。クリックで選択して座標を数値指定もできます。<br>
+    ・<b>調べられる</b>をオンにすると水色マーカーが付き、ゲーム内で「?」が出て調べられます。セリフは左の「調べられる家具」から編集（同じ種類の家具はセリフを共有）。<br>
+    ・家具の当たり判定と「調べる」ポイントは位置から自動で付きます。「ラグ」は上を歩けます。ポスター類は壁の中に収まっていれば通行の邪魔になりません。<br>
+    ・変更は<b>下書き保存</b>で保存し、<b>公開</b>で全訪問者に反映されます。`;
+
+  function syncPanel() {
+    nameEl.textContent = selLabel();
+    const it = selItem();
+    xIn.value = it ? Math.round(it.x) : '';
+    yIn.value = it ? Math.round(it.y) : '';
+    xIn.disabled = yIn.disabled = !it;
+    const isFurn = lsel && lsel.type === 'furniture';
+    delBtn.style.display = dupBtn.style.display = exLabel.style.display = isFurn ? '' : 'none';
+    if (isFurn) exCb.checked = !!selItem().examine;
+  }
+  xIn.oninput = () => { const it = selItem(); if (it) { it.x = +xIn.value || 0; drawLayout(); } };
+  yIn.oninput = () => { const it = selItem(); if (it) { it.y = +yIn.value || 0; drawLayout(); } };
+  delBtn.onclick = () => {
+    if (lsel && lsel.type === 'furniture') {
+      data.layout.furniture.splice(lsel.idx, 1);
+      lsel = null; syncPanel(); drawLayout();
+    }
+  };
+  dupBtn.onclick = () => {
+    if (lsel && lsel.type === 'furniture') {
+      const f = data.layout.furniture[lsel.idx];
+      data.layout.furniture.push({ ...f, x: f.x + 8, y: f.y + 8 });
+      lsel = { type: 'furniture', idx: data.layout.furniture.length - 1 };
+      syncPanel(); drawLayout();
+    }
+  };
+
+  const start = e => {
+    e.preventDefault();
+    const p = canvasPos(e);
+    lsel = pickAt(p.x, p.y);
+    const it = selItem();
+    ldrag = it ? { dx: p.x - it.x, dy: p.y - it.y } : null;
+    if (ldrag) cv.classList.add('dragging');
+    syncPanel(); drawLayout();
+  };
+  const move = e => {
+    if (!ldrag) return;
+    e.preventDefault();
+    const p = canvasPos(e);
+    const it = selItem();
+    const im = itemImg(it, lsel.type);
+    it.x = Math.round(Math.min(GW - im.width, Math.max(0, p.x - ldrag.dx)));
+    it.y = Math.round(Math.min(GH - im.height, Math.max(0, p.y - ldrag.dy)));
+    syncPanel(); drawLayout();
+  };
+  const end = () => { ldrag = null; cv.classList.remove('dragging'); };
+  cv.addEventListener('mousedown', start);
+  cv.addEventListener('mousemove', move);
+  addEventListener('mouseup', end);
+  cv.addEventListener('touchstart', start);
+  cv.addEventListener('touchmove', move);
+  cv.addEventListener('touchend', end);
+
+  wrap.append(roomRow, panel, addRow, hint);
+  c.appendChild(wrap);
+  syncPanel();
+  drawLayout();
+}
+
+// ---- ヘッダーのボタン ----
+function mk(txt, fn, cls) { // renderContent内でも使うためグローバルに
+  const b = document.createElement('button');
+  b.className = 'small' + (cls ? ' ' + cls : '');
+  b.textContent = txt;
+  b.onclick = fn;
+  return b;
+}
+
+async function saveDraft() {
+  const r = await fetch('/api/backstage/draft', { method: 'PUT', body: JSON.stringify(data) });
+  if (r.status === 401) { showLogin(); return false; }
+  if (!r.ok) { setStatus('保存に失敗しました: ' + (await r.text()).slice(0, 100)); return false; }
+  return true;
+}
+
+$('#btnSave').onclick = async () => {
+  if (await saveDraft()) setStatus('下書きを保存しました（プレビューで確認 → 公開で本番反映）', true);
+};
+$('#btnPreview').onclick = async () => {
+  if (await saveDraft()) window.open(SITE + '/backstage/?draft=1', '_blank');
+};
+$('#btnPublish').onclick = async () => {
+  if (!confirm('現在の下書きを公開します。全訪問者にすぐ反映されます。よろしいですか？')) return;
+  if (!(await saveDraft())) return;
+  const r = await fetch('/api/backstage/publish', { method: 'POST' });
+  if (r.ok) setStatus('🚀 公開しました！ゲームに反映されています');
+  else setStatus('公開に失敗しました: ' + (await r.text()).slice(0, 100));
+};
+$('#btnExport').onclick = () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'scenario.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus('バックアップをダウンロードしました');
+};
+
+init();
+</script>
+</body>
+</html>

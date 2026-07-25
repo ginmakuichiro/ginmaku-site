@@ -5,6 +5,9 @@
   "routes": [
     { "pattern": "admin.ginmakuichiro.net", "custom_domain": true }
   ],
+  "rules": [
+    { "type": "Text", "globs": ["**/*.html"], "fallthrough": true }
+  ],
   "kv_namespaces": [
     { "binding": "DATA", "id": "a92bec0b73ec44e2ab0e5a5794cf2420" }
   ],

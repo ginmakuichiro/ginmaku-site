@@ -38,25 +38,34 @@ ROOM_IMGS.forEach(n => load(n, `assets/room/${n}.png`));
 MEMBER_IMGS.forEach(n => load(n, `assets/member/${n}.png`));
 
 // ---- シナリオ読み込み ----
-// editor.html で保存した下書き（localStorage）があればそちらを優先
+// 優先順: ?draft=1 → 管理画面の下書き(KV) / 通常 → ローカル下書き(開発用) → KV公開版 → 同梱scenario.json
 const DRAFT_KEY = 'gakuya_scenario_draft';
+const SCENARIO_API = 'https://admin.ginmakuichiro.net/data/backstage/scenario.json';
 let scenario = null;
 let usingDraft = false;
 (function loadScenario() {
-  const draft = localStorage.getItem(DRAFT_KEY);
-  if (draft) {
-    try {
-      const d = JSON.parse(draft);
-      if (d.layout) { // 旧形式（配置データなし）の下書きは無視
-        scenario = d;
-        usingDraft = true;
-        return;
-      }
-    } catch (e) { /* 壊れた下書きは無視 */ }
+  const preview = new URLSearchParams(location.search).get('draft') === '1';
+  if (!preview) {
+    const draft = localStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      try {
+        const d = JSON.parse(draft);
+        if (d.layout) { // 旧形式（配置データなし）の下書きは無視
+          scenario = d;
+          usingDraft = true;
+          return;
+        }
+      } catch (e) { /* 壊れた下書きは無視 */ }
+    }
   }
-  fetch('scenario.json', { cache: 'no-cache' }) // 編集反映が即座に見えるよう毎回サーバーに確認
-    .then(r => r.json())
-    .then(d => { scenario = d; });
+  const fallback = () =>
+    fetch('scenario.json', { cache: 'no-cache' })
+      .then(r => r.json())
+      .then(d => { scenario = d; });
+  fetch(SCENARIO_API + (preview ? '?draft=1' : ''), { cache: 'no-cache' })
+    .then(r => { if (!r.ok) throw new Error('not published'); return r.json(); })
+    .then(d => { scenario = d; usingDraft = preview; })
+    .catch(fallback);
 })();
 
 // ---- ライブ情報（公式サイトと同じAPIから取得）----

@@ -54,7 +54,7 @@ let usingDraft = false;
       }
     } catch (e) { /* 壊れた下書きは無視 */ }
   }
-  fetch('scenario.json')
+  fetch('scenario.json', { cache: 'no-cache' }) // 編集反映が即座に見えるよう毎回サーバーに確認
     .then(r => r.json())
     .then(d => { scenario = d; });
 })();
@@ -259,6 +259,7 @@ function startDialog(speakerId, data) {
   dialog.choices = t.choices && t.choices.length ? t.choices : null;
   dialog.choiceIdx = 0;
   dialog.pendingSet = t.set || null;
+  dialog.pendingUrl = t.url || null;
 }
 
 function endDialog() {
@@ -266,6 +267,11 @@ function endDialog() {
   dialog.active = false;
   dialog.choices = null;
   dialog.pendingSet = null;
+  if (dialog.pendingUrl) {
+    const url = dialog.pendingUrl;
+    dialog.pendingUrl = null;
+    window.location.href = url; // 会話を終えてからページ移動（例: ドアから退出）
+  }
 }
 
 // ---- 対象検索 ----
@@ -293,6 +299,7 @@ function action() {
     if (dialog.phase === 'choice') {
       const c = dialog.choices[dialog.choiceIdx];
       if (c.set) flags[c.set] = true;
+      if (c.url) dialog.pendingUrl = c.url;
       dialog.choices = null;
       if (c.lines && c.lines.length) {
         dialog.lines = expandLines(c.lines);

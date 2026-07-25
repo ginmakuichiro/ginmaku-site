@@ -277,7 +277,12 @@ function renderContent() {
       chSetIn.placeholder = '選ぶと立つフラグ（任意）';
       chSetIn.value = ch.set || '';
       chSetIn.oninput = () => { if (chSetIn.value.trim()) ch.set = chSetIn.value.trim(); else delete ch.set; };
-      row1.append(labelIn, chSetIn,
+      const chUrlIn = document.createElement('input');
+      chUrlIn.type = 'text';
+      chUrlIn.placeholder = '会話後の移動先URL（任意。例: /）';
+      chUrlIn.value = ch.url || '';
+      chUrlIn.oninput = () => { if (chUrlIn.value.trim()) ch.url = chUrlIn.value.trim(); else delete ch.url; };
+      row1.append(labelIn, chSetIn, chUrlIn,
         mk('削除', () => { t.choices.splice(ci, 1); if (!t.choices.length) delete t.choices; renderContent(); }));
       const chTa = document.createElement('textarea');
       chTa.placeholder = '選んだ後の返事（1行 = 1ページ）';

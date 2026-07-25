@@ -1,0 +1,4 @@
+# Backstage Tourは更新が多いため、毎回サーバーに更新確認させる
+# （変更がなければ304で済むので軽い。画像もETag再検証のみ）
+/backstage/*
+  Cache-Control: no-cache

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>楽屋 - 銀幕一楼とTIMECAFE</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #1a1720;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", monospace, sans-serif;
+    touch-action: none;
+  }
+  #game-wrap {
+    position: relative;
+    width: min(96vw, 960px);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    border: 3px solid #3a3442;
+    border-radius: 4px;
+  }
+  #hint {
+    color: #b8c2c8;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+  /* モバイル用コントローラ */
+  #pad {
+    display: none;
+    margin-top: 12px;
+    width: min(96vw, 960px);
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(3, 52px);
+    gap: 2px;
+  }
+  .pbtn {
+    background: #3a3442;
+    color: #dde4e8;
+    border: none;
+    border-radius: 8px;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pbtn:active { background: #c0392b; }
+  #btnA {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: #c0392b;
+    color: #fff;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  #btnA:active { background: #8e2a20; }
+  /* タッチ端末: 画面上部にゲーム、下部に操作ボタンを固定したゲーム機風レイアウト
+     （bodyの .touch クラスはJSでタッチ検出して付与） */
+  body.touch {
+    justify-content: flex-start;
+    min-height: 100dvh;
+    padding-top: 10px;
+  }
+  body.touch #pad {
+    display: flex;
+    margin-top: auto;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    width: 100%;
+    background: #24202c;
+    border-top: 1px solid #3a3442;
+  }
+  body.touch #dpad {
+    grid-template-columns: repeat(3, 60px);
+    grid-template-rows: repeat(3, 60px);
+  }
+  body.touch .pbtn { font-size: 24px; }
+  body.touch #btnA { width: 84px; height: 84px; font-size: 20px; }
+  body.touch #hint { display: none; }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="256" height="176"></canvas>
+</div>
+<div id="hint">矢印キー / WASD で移動、メンバーに近づいて <b>Z</b> か <b>スペース</b> で話しかける</div>
+<div id="pad">
+  <div id="dpad">
+    <div></div><button class="pbtn" data-dir="up">▲</button><div></div>
+    <button class="pbtn" data-dir="left">◀</button><div></div><button class="pbtn" data-dir="right">▶</button>
+    <div></div><button class="pbtn" data-dir="down">▼</button><div></div>
+  </div>
+  <button id="btnA">話す</button>
+</div>
+<script>
+  // タッチ端末なら下部固定の操作ボタンを表示
+  if (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window) {
+    document.body.classList.add('touch');
+  }
+</script>
+<script src="game.js"></script>
+</body>
+</html>

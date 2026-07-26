@@ -360,13 +360,14 @@ const PLACEABLE = ROOM_IMGS.filter(n => !n.startsWith('tile_'));
 const imgs = {};
 let imgsLoaded = 0;
 const imgsTotal = ROOM_IMGS.length + MEMBER_IMGS.length;
+const ASSET_VER = '20260726'; // ドット絵差し替え時に更新
 for (const n of ROOM_IMGS) {
-  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}room/${n}.png`;
+  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}room/${n}.png?v=${ASSET_VER}`;
   im.onload = () => { imgsLoaded++; drawLayout(); };
   imgs[n] = im;
 }
 for (const n of MEMBER_IMGS) {
-  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}member/${n}.png`;
+  const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}member/${n}.png?v=${ASSET_VER}`;
   im.onload = () => { imgsLoaded++; drawLayout(); };
   imgs[n] = im;
 }

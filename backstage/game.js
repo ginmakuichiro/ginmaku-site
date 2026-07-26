@@ -24,13 +24,15 @@ function cameraPos() {
 }
 
 // ---- アセット読み込み ----
+// ASSET_VER: ドット絵を差し替えたら日付を更新する（ブラウザキャッシュ対策）
+const ASSET_VER = '20260726';
 const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug'];
 const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
 const img = {};
 let loaded = 0, total = ROOM_IMGS.length + MEMBER_IMGS.length;
 function load(name, src) {
   const im = new Image();
-  im.src = src;
+  im.src = `${src}?v=${ASSET_VER}`;
   im.onload = () => { loaded++; };
   img[name] = im;
 }

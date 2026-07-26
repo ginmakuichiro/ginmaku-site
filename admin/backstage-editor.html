@@ -27,6 +27,8 @@
     border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
   }
   button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button:disabled:hover { border-color: var(--line); }
   button.primary { background: var(--red); border-color: var(--red); color: #fff; }
   button.small { padding: 2px 8px; font-size: 12px; }
   #status { font-size: 12px; color: var(--dim); width: 100%; }
@@ -108,10 +110,10 @@
 <body>
 <header>
   <h1>🎤 Backstage Tour 編集</h1>
-  <button id="btnSave">下書き保存</button>
-  <button id="btnPreview">▶ プレビュー</button>
-  <button id="btnPublish" class="primary">🚀 公開</button>
-  <button id="btnExport">バックアップ書き出し</button>
+  <button id="btnSave" disabled>下書き保存</button>
+  <button id="btnPreview" disabled>▶ プレビュー</button>
+  <button id="btnPublish" class="primary" disabled>🚀 公開</button>
+  <button id="btnExport" disabled>バックアップ書き出し</button>
   <div id="status"></div>
 </header>
 <main>
@@ -134,7 +136,16 @@ function setStatus(msg, draft) {
   statusEl.className = draft ? 'draft' : '';
 }
 
+// ログイン前は保存・公開などのボタンを押せないようにする
+function setLoggedIn(ok) {
+  for (const id of ['#btnSave', '#btnPreview', '#btnPublish', '#btnExport']) {
+    $(id).disabled = !ok;
+  }
+}
+
 function showLogin() {
+  setLoggedIn(false);
+  $('#sidebar').innerHTML = '';
   const c = $('#content');
   c.innerHTML = '';
   const box = document.createElement('div');
@@ -164,6 +175,7 @@ function showLogin() {
 async function init() {
   const r = await fetch('/api/backstage/draft');
   if (r.status === 401) { showLogin(); return; }
+  setLoggedIn(true);
   if (r.ok) {
     data = await r.json();
     setStatus('下書きを読み込みました');
@@ -628,6 +640,7 @@ function mk(txt, fn, cls) { // renderContent内でも使うためグローバル
 }
 
 async function saveDraft() {
+  if (!data) { showLogin(); return false; } // 未ログイン等でデータ未読込
   const r = await fetch('/api/backstage/draft', { method: 'PUT', body: JSON.stringify(data) });
   if (r.status === 401) { showLogin(); return false; }
   if (!r.ok) { setStatus('保存に失敗しました: ' + (await r.text()).slice(0, 100)); return false; }
@@ -648,6 +661,7 @@ $('#btnPublish').onclick = async () => {
   else setStatus('公開に失敗しました: ' + (await r.text()).slice(0, 100));
 };
 $('#btnExport').onclick = () => {
+  if (!data) { showLogin(); return; }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

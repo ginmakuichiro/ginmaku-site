@@ -460,3 +460,78 @@ footer .sns a:hover{color:var(--gold)}
   color:var(--gold);font-family:'Shippori Mincho B1',serif;
   font-size:1rem;font-weight:700;letter-spacing:0;
 }
+
+/* ---------- BACKSTAGE TOUR：楽屋口バナー（v14） ---------- */
+.nav-backstage{color:#F2D178 !important}
+.nav-backstage:hover,.nav-backstage:focus-visible{color:var(--curtain-deep) !important;background:#F2D178 !important}
+
+.stage-door{
+  position:relative;display:block;overflow:hidden;text-decoration:none;
+  margin-top:34px;padding:30px 30px 66px;
+  color:var(--screen);
+  background-color:#26262b;
+  background-image:url("/backstage/assets/room/tile_wall.png?v=20260726");
+  background-size:48px 48px;
+  image-rendering:pixelated;
+  border:1px solid var(--gold);
+  outline:1px solid var(--gold);outline-offset:4px;
+  border-radius:var(--radius);
+  transition:box-shadow .25s;
+}
+.stage-door:hover{box-shadow:0 12px 32px rgba(0,0,0,.4)}
+
+/* 楽屋口の灯り */
+.sd-lamp{
+  position:absolute;left:0;right:0;top:0;height:80%;pointer-events:none;
+  background:radial-gradient(ellipse 55% 100% at 24% -10%, rgba(242,209,120,.24), transparent 70%);
+  opacity:.85;transition:opacity .25s;
+}
+.stage-door:hover .sd-lamp{opacity:1}
+
+.sd-body{position:relative;z-index:2;display:block;max-width:min(560px,58%)}
+.sd-title{
+  display:block;font-size:1.6rem;font-weight:800;
+  letter-spacing:.1em;line-height:1.35;
+}
+.sd-lead{display:block;margin-top:8px;font-size:.88rem;line-height:1.8;color:#CFC6B8}
+.sd-enter{
+  display:inline-block;margin-top:18px;padding:8px 24px;
+  border:1px solid var(--gold);color:var(--gold);border-radius:var(--radius);
+  font-size:.78rem;letter-spacing:.14em;
+  transition:background .2s,color .2s;
+}
+.stage-door:hover .sd-enter{background:var(--gold);color:var(--curtain-deep)}
+
+/* 楽屋の床とメンバー */
+.sd-floor{
+  position:absolute;left:0;right:0;bottom:0;height:52px;
+  background-image:url("/backstage/assets/room/tile_floor.png?v=20260726");
+  background-size:48px 48px;
+  image-rendering:pixelated;
+  box-shadow:inset 0 2px 0 rgba(0,0,0,.45);
+}
+.sd-cast{
+  position:absolute;right:30px;bottom:52px;z-index:2;
+  display:flex;align-items:flex-end;gap:10px;
+}
+.sd-cast img{width:48px;height:48px;display:block;image-rendering:pixelated}
+.sd-door{width:48px !important;height:78px !important;margin-right:14px}
+.stage-door:hover .sd-cast img:not(.sd-door){animation:sd-bob .52s ease-in-out infinite alternate}
+.stage-door:hover .sd-cast img:nth-child(3){animation-delay:.07s}
+.stage-door:hover .sd-cast img:nth-child(4){animation-delay:.14s}
+.stage-door:hover .sd-cast img:nth-child(5){animation-delay:.21s}
+.stage-door:hover .sd-cast img:nth-child(6){animation-delay:.28s}
+@keyframes sd-bob{from{transform:translateY(0)}to{transform:translateY(-4px)}}
+
+@media(max-width:720px){
+  .stage-door{padding:24px 20px 130px;margin-top:26px}
+  .sd-body{max-width:100%}
+  .sd-title{font-size:1.25rem}
+  .sd-lead{font-size:.82rem;line-height:1.85}
+  .sd-cast{left:0;right:0;justify-content:center;gap:6px}
+  .sd-cast img{width:40px;height:40px}
+  .sd-door{width:40px !important;height:65px !important;margin-right:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  .stage-door:hover .sd-cast img{animation:none}
+}

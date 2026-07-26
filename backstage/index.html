@@ -71,13 +71,32 @@
   #btnA:active { background: #8e2a20; }
   /* タッチ端末: 画面上部にゲーム、下部に操作ボタンを固定したゲーム機風レイアウト
      （bodyの .touch クラスはJSでタッチ検出して付与） */
+  /* html側の上下中央寄せが残っていると、縮めたbodyごと下へ押し出されて
+     操作ボタンが画面外に出る。タッチ時は通常のブロックに戻す。 */
+  html.touch {
+    display: block;
+    height: var(--app-h, 100dvh);
+    min-height: 0;
+    overflow: hidden;
+  }
+  /* 高さは JS が visualViewport（実際に見えている領域）から --app-h に入れる。
+     100dvh はAndroid系でナビゲーションバーの分を含んだ値を返すことがあり、
+     下段のボタンがバーの裏に隠れてしまうため当てにしない（dvhは非対応時の保険）。 */
   body.touch {
     justify-content: flex-start;
-    min-height: 100dvh;
+    height: var(--app-h, 100dvh);
+    min-height: 0;
+    box-sizing: border-box;   /* padding込みで高さを収める */
     padding-top: 10px;
+    overflow: hidden;
   }
+  /* ゲーム画面は縮んでよい／操作ボタンは絶対に縮めない */
+  body.touch #game-wrap { flex: 0 1 auto; min-height: 0; }
+  body.touch #game-wrap canvas { max-height: 100%; object-fit: contain; }
+  body.touch #pad { flex: 0 0 auto; }
   body.touch #pad {
     display: flex;
+    box-sizing: border-box;   /* padding込みの幅にしないと左右のボタンが画面外に出る */
     margin-top: auto;
     padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
     width: 100%;
@@ -128,7 +147,21 @@
   // タッチ端末なら下部固定の操作ボタンを表示
   if (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window) {
     document.body.classList.add('touch');
+    document.documentElement.classList.add('touch');
   }
+  // 実際に見えている高さを --app-h に反映する。
+  // URLバーの出入りやナビゲーションバーの有無で変わるので、変化のたびに測り直す。
+  (function fitViewport() {
+    const vv = window.visualViewport;
+    const apply = () => {
+      const h = vv ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    };
+    apply();
+    if (vv) { vv.addEventListener('resize', apply); vv.addEventListener('scroll', apply); }
+    window.addEventListener('resize', apply);
+    window.addEventListener('orientationchange', () => setTimeout(apply, 250));
+  })();
 </script>
 <script src="game.js?v=20260726c"></script>
 </body>

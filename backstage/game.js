@@ -349,6 +349,43 @@ function moveCursor(dir) {
   return true;
 }
 
+// ---- 導入演出 ----
+// 黒画面にタイトル → 画面全体のモザイクが2秒かけて解けて楽屋が現れる
+const introEl = document.getElementById('intro');
+const INTRO_HOLD_MS = 1000;    // 黒画面＋タイトルの時間
+const INTRO_MOSAIC_MS = 2000;  // モザイクが解けるまでの時間
+const MOSAIC_MAX = 22;         // 最大のモザイク粒（論理px）
+const mosCv = document.createElement('canvas');
+const mosCtx = mosCv.getContext('2d');
+let introT0 = null;            // 準備完了時刻
+let introDone = !introEl;
+
+function startIntro() {
+  if (introT0 !== null) return;
+  introT0 = Date.now();
+  setTimeout(() => introEl.classList.add('go'), INTRO_HOLD_MS);
+  setTimeout(() => { introEl.classList.add('done'); introDone = true; },
+    INTRO_HOLD_MS + INTRO_MOSAIC_MS);
+}
+
+// 描き終えた画面を一度小さく縮めてから拡大し直してモザイクにする（演出中の2秒だけ動く）
+function applyMosaic() {
+  if (introDone) return;
+  const t = Date.now() - introT0 - INTRO_HOLD_MS;
+  const p = t <= 0 ? 0 : Math.min(1, t / INTRO_MOSAIC_MS);
+  const block = Math.max(1, Math.round(MOSAIC_MAX * Math.pow(1 - p, 1.6)));
+  if (block <= 1) return;
+  const sw = Math.ceil(VW / block), sh = Math.ceil(VH / block);
+  mosCv.width = sw; mosCv.height = sh;
+  mosCtx.imageSmoothingEnabled = false;
+  mosCtx.drawImage(canvas, 0, 0, sw, sh);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // キャンバス実ピクセルで塗り直す
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(mosCv, 0, 0, sw, sh, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
 // ---- 入力 ----
 const keys = {};
 addEventListener('keydown', e => {
@@ -393,6 +430,7 @@ function collides(x, y) {
 }
 
 function update() {
+  if (introT0 !== null && Date.now() - introT0 < INTRO_HOLD_MS) return; // 黒画面中は動かさない
   if (dialog.active) {
     if (dialog.phase === 'lines' && dialog.chars < dialog.lines[dialog.lineIdx].length) dialog.chars += 0.5;
     return;
@@ -506,6 +544,7 @@ function frame() {
     ctx.fillText('Loading...', VW / 2 - 25, VH / 2);
   } else {
     if (!layoutReady) applyLayout();
+    startIntro();
     update();
     // ワールド描画（カメラ分ずらす）
     const { cx, cy } = cameraPos();
@@ -519,6 +558,7 @@ function frame() {
     // UIはスクリーン座標で描画
     drawDialog();
     drawBadge();
+    applyMosaic();
   }
   requestAnimationFrame(frame);
 }

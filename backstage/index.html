@@ -91,9 +91,27 @@
   body.touch .pbtn { font-size: 24px; }
   body.touch #btnA { width: 84px; height: 84px; font-size: 20px; }
   body.touch #hint { display: none; }
+
+  /* ---------- 導入演出：黒画面のタイトル → モザイクが解けて楽屋へ ---------- */
+  #intro {
+    position: fixed; inset: 0; z-index: 100; background: #000;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .7s ease;
+  }
+  #intro .in-title {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: clamp(1.2rem, 5.5vw, 2rem); font-weight: 700;
+    letter-spacing: .24em; color: #F4EDDD; text-indent: .24em;
+    opacity: 0; animation: in-fade .7s ease forwards;
+  }
+  @keyframes in-fade { to { opacity: 1 } }
+  #intro.go { opacity: 0; pointer-events: none }
+  #intro.done { display: none }
 </style>
 </head>
 <body>
+<div id="intro"><span class="in-title">BACKSTAGE TOUR</span></div>
+
 <div id="game-wrap">
   <canvas id="game" width="256" height="176"></canvas>
 </div>
@@ -112,6 +130,6 @@
     document.body.classList.add('touch');
   }
 </script>
-<script src="game.js?v=20260726a"></script>
+<script src="game.js?v=20260726c"></script>
 </body>
 </html>

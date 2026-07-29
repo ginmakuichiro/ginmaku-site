@@ -21,6 +21,10 @@ export default {
     if (p === '/data/schedule.json') return publicSchedule(env);
     if (p === '/data/news.json') return publicNews(env);
     if (p === '/data/backstage/scenario.json') return publicBackstage(env, url);
+    // 写真アルバムの設定（枚数・キャプション・解放条件・画像）。ゲームから読む
+    if (p === '/data/backstage/photos.json') {
+      return json({ photos: await loadPhotos(env) }, 200, { 'access-control-allow-origin': '*' });
+    }
     if (p === '/backstage') return new Response(EDITOR_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     if (p.startsWith('/img/')) return serveImage(env, p.slice(5));
     if (p === '/api/count') {
@@ -70,6 +74,11 @@ export default {
         await env.DATA.put(SCORES_KEY, JSON.stringify(list));
         return json({ scores: list });
       }
+      // 写真アルバムの設定
+      if (p === '/api/backstage/photos' && req.method === 'GET') {
+        return json({ photos: await loadPhotos(env) });
+      }
+      if (p === '/api/backstage/photos' && req.method === 'PUT') return savePhotos(req, env);
       if (p === '/api/image' && req.method === 'POST') return uploadImage(req, env);
       const mi = p.match(/^\/api\/image\/(img_[\w-]+)$/);
       if (mi && req.method === 'DELETE') { await env.DATA.delete(mi[1]); return json({ ok: true }); }
@@ -342,6 +351,46 @@ async function hmac(env, data) {
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
   return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- 楽屋の写真アルバム ---------- */
+
+const PHOTOS_KEY = 'backstage:photos';
+const PHOTOS_MAX = 30;
+
+// 最初に管理画面を開いたときに並ぶひな形（画像は未設定＝ダミー表示）
+const PHOTOS_DEFAULT = [
+  { id: 'p1', caption: '全員そろったアー写。', hint: '楽屋にいる全員と話す', flag: 'met_all', img: '' },
+  { id: 'p2', caption: '', hint: 'ゲーム機で遊ぶ', flag: 'played_galaxy', img: '' },
+  { id: 'p3', caption: '', hint: 'ゲームで20000点', flag: 'galaxy_20000', img: '' },
+];
+
+async function loadPhotos(env) {
+  let raw = null;
+  try { raw = JSON.parse(await env.DATA.get(PHOTOS_KEY)); } catch (e) { /* 壊れていたらひな形 */ }
+  const list = Array.isArray(raw) ? raw : null;
+  if (!list) return PHOTOS_DEFAULT.map(p => ({ ...p }));
+  return list.slice(0, PHOTOS_MAX).map((p, i) => ({
+    id: String(p.id || `p${i + 1}`),
+    caption: String(p.caption || ''),
+    hint: String(p.hint || ''),
+    flag: String(p.flag || ''),
+    img: /^img_[\w-]+$/.test(String(p.img || '')) ? String(p.img) : '',
+  }));
+}
+
+async function savePhotos(req, env) {
+  const b = await req.json().catch(() => null);
+  if (!b || !Array.isArray(b.photos)) return json({ error: 'bad body' }, 400);
+  const clean = b.photos.slice(0, PHOTOS_MAX).map((p, i) => ({
+    id: String(p.id || `p${i + 1}`).slice(0, 20),
+    caption: String(p.caption || '').slice(0, 60),
+    hint: String(p.hint || '').slice(0, 40),
+    flag: String(p.flag || '').slice(0, 40),
+    img: /^img_[\w-]+$/.test(String(p.img || '')) ? String(p.img) : '',
+  }));
+  await env.DATA.put(PHOTOS_KEY, JSON.stringify(clean));
+  return json({ photos: clean });
 }
 
 /* ---------- 楽屋シューティングのランキング ---------- */

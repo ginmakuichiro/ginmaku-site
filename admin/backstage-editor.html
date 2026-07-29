@@ -32,6 +32,14 @@
   button.primary { background: var(--red); border-color: var(--red); color: #fff; }
   button.small { padding: 2px 8px; font-size: 12px; }
   button.danger { border-color: #a33; color: #f0a0a0; }   /* 消す操作は色で区別する */
+  /* 写真アルバムのサムネイル（ゲーム内と同じ3:2で見せる） */
+  .photo-prev {
+    width: 150px; height: 100px; flex: 0 0 auto;
+    background: #14171f; border: 1px solid var(--line); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--dim); font-size: 11px; overflow: hidden;
+  }
+  .photo-prev img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #status { font-size: 12px; color: var(--dim); width: 100%; }
   #status.draft { color: var(--accent); }
   main { display: flex; gap: 0; min-height: calc(100vh - 60px); }
@@ -206,6 +214,11 @@ function renderSidebar() {
   lb.textContent = '🗺 配置（アセットの場所）';
   lb.onclick = () => { currentType = 'layout'; renderSidebar(); renderContent(); };
   nav.appendChild(lb);
+  const pb = document.createElement('button');
+  pb.className = 'speaker-btn' + (currentType === 'photos' ? ' active' : '');
+  pb.textContent = '📷 写真アルバム';
+  pb.onclick = () => { currentType = 'photos'; renderSidebar(); renderContent(); };
+  nav.appendChild(pb);
   const rb = document.createElement('button');
   rb.className = 'speaker-btn' + (currentType === 'ranking' ? ' active' : '');
   rb.textContent = '🏆 ランキング（ゲーム）';
@@ -310,6 +323,7 @@ function renderContent() {
   c.innerHTML = '';
   if (currentType === 'layout') { renderLayout(c); return; }
   if (currentType === 'ranking') { renderRanking(c); return; }
+  if (currentType === 'photos') { renderPhotos(c); return; }
   const speaker = data[currentType][currentId];
 
   // 名前
@@ -543,6 +557,173 @@ function pickAt(x, y) {
     if (hit(L.furniture[i], imgs[L.furniture[i].n])) return { type: 'furniture', idx: i };
   }
   return null;
+}
+
+// ---- 写真アルバム管理 ----
+// 解放条件はゲーム側が立てるフラグ。よく使うものは選べるようにしておく
+const PHOTO_FLAGS = [
+  { flag: '', label: '条件なし（最初から見られる）' },
+  { flag: 'met_all', label: '楽屋の全員と話した' },
+  { flag: 'played_galaxy', label: 'ゲームを遊んだ' },
+  { flag: 'galaxy_5000', label: 'ゲームで5000点' },
+  { flag: 'galaxy_20000', label: 'ゲームで20000点' },
+  { flag: 'galaxy_allclear', label: 'ゲームを1周クリア' },
+];
+const PHOTO_MAX = 30;
+let photoList = null;
+
+async function savePhotoList(msg) {
+  const r = await fetch('/api/backstage/photos', {
+    method: 'PUT', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ photos: photoList }),
+  });
+  if (r.ok) setStatus(msg || '写真の設定を保存しました', true);
+  else setStatus('保存に失敗しました');
+}
+
+function renderPhotos(c) {
+  if (!photoList) {
+    const l = document.createElement('div');
+    l.textContent = '読み込み中…';
+    c.appendChild(l);
+    fetch('/api/backstage/photos').then(r => r.json())
+      .then(d => { photoList = d.photos || []; renderContent(); })
+      .catch(() => { l.textContent = '読み込みに失敗しました。'; });
+    return;
+  }
+
+  photoList.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'topic';
+
+    const head = document.createElement('div');
+    head.className = 'topic-head';
+    const idx = document.createElement('span');
+    idx.className = 'idx';
+    idx.textContent = `${i + 1}枚目`;
+    head.appendChild(idx);
+    head.append(
+      mk('↑', () => { if (i > 0) { [photoList[i - 1], photoList[i]] = [photoList[i], photoList[i - 1]]; renderContent(); } }),
+      mk('↓', () => { if (i < photoList.length - 1) { [photoList[i + 1], photoList[i]] = [photoList[i], photoList[i + 1]]; renderContent(); } }),
+      mk('削除', () => {
+        if (!confirm(`${i + 1}枚目を削除しますか？`)) return;
+        photoList.splice(i, 1); renderContent();
+      }, 'danger'));
+    card.appendChild(head);
+
+    // 画像（差し替え・削除）
+    const imgRow = document.createElement('div');
+    imgRow.className = 'ev-row';
+    const prev = document.createElement('div');
+    prev.className = 'photo-prev';
+    if (p.img) {
+      const im = document.createElement('img');
+      im.src = '/img/' + p.img;
+      prev.appendChild(im);
+    } else {
+      prev.textContent = 'NO IMAGE';
+    }
+    imgRow.appendChild(prev);
+
+    const file = document.createElement('input');
+    file.type = 'file'; file.accept = 'image/*'; file.hidden = true;
+    file.onchange = async ev => {
+      const f = ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      setStatus('画像をアップロード中…');
+      try {
+        const blob = await shrinkPhoto(f);
+        const r = await fetch('/api/image', { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: blob });
+        const d = await r.json();
+        if (!d.id) throw new Error(d.error || 'failed');
+        p.img = d.id;
+        await savePhotoList('画像を差し替えました');
+        renderContent();
+      } catch (e) {
+        setStatus('画像のアップロードに失敗しました');
+      }
+    };
+    const btns = document.createElement('div');
+    btns.append(mk(p.img ? '画像を差し替え' : '画像を選ぶ', () => file.click()));
+    if (p.img) btns.append(mk('画像を外す', () => { p.img = ''; renderContent(); }, 'danger'));
+    imgRow.append(btns, file);
+    card.appendChild(imgRow);
+
+    // キャプション
+    const cap = document.createElement('input');
+    cap.type = 'text';
+    cap.placeholder = '写真の下に出る一言（空欄なら出ない）';
+    cap.value = p.caption || '';
+    cap.oninput = () => { p.caption = cap.value; };
+    card.appendChild(field('説明（1行）', cap));
+
+    // 解放条件とヒント
+    const row = document.createElement('div');
+    row.className = 'cond-row';
+    const sel = document.createElement('select');
+    let known = false;
+    PHOTO_FLAGS.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.flag; o.textContent = f.label;
+      sel.appendChild(o);
+      if (f.flag === (p.flag || '')) known = true;
+    });
+    const other = document.createElement('option');
+    other.value = '__other__'; other.textContent = 'その他（フラグ名を直接書く）';
+    sel.appendChild(other);
+    sel.value = known ? (p.flag || '') : '__other__';
+    sel.onchange = () => { p.flag = sel.value === '__other__' ? (p.flag || '') : sel.value; renderContent(); };
+    row.appendChild(field('見られるようになる条件', sel));
+
+    if (sel.value === '__other__') {
+      const fl = document.createElement('input');
+      fl.type = 'text'; fl.placeholder = 'フラグ名';
+      fl.value = p.flag || '';
+      fl.oninput = () => { p.flag = fl.value.trim(); };
+      row.appendChild(field('フラグ名', fl));
+    }
+
+    const hint = document.createElement('input');
+    hint.type = 'text';
+    hint.placeholder = '例: 楽屋にいる全員と話す';
+    hint.value = p.hint || '';
+    hint.oninput = () => { p.hint = hint.value; };
+    row.appendChild(field('未開放のときに出すヒント', hint));
+    card.appendChild(row);
+
+    c.appendChild(card);
+  });
+
+  const bar = document.createElement('div');
+  bar.className = 'ev-row';
+  if (photoList.length < PHOTO_MAX) {
+    bar.appendChild(mk('+ 写真を追加', () => {
+      photoList.push({ id: 'p' + (Date.now() % 100000), caption: '', hint: '？？？', flag: '', img: '' });
+      renderContent();
+    }));
+  }
+  bar.appendChild(mk('保存して反映', () => savePhotoList(), 'primary'));
+  c.appendChild(bar);
+
+  const note = document.createElement('div');
+  note.className = 'hint';
+  note.innerHTML = '楽屋のノートパソコンで見られる写真です。<b>保存すると即座に反映されます</b>（シナリオの「公開」とは別）。'
+    + '<br>画像は長辺1600pxに縮小して保存されます。未設定の枠は「NO IMAGE」と表示されます。'
+    + '<br>条件を満たすまでは「?」とヒントが出るので、あと何枚あるかは訪問者にも見えます。';
+  c.appendChild(note);
+}
+
+// 写真は表示が大きいので、フライヤーより少し高い解像度で保存する
+async function shrinkPhoto(file) {
+  const bmp = await createImageBitmap(file);
+  const MAX = 1600, Q = 0.86;
+  const scale = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  return new Promise(res => cv.toBlob(res, 'image/jpeg', Q));
 }
 
 // ---- ランキング管理 ----

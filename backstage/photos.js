@@ -7,33 +7,38 @@
   const OPEN_KEY = 'gakuya_photos_v1'; // 解放済みIDの保存先
 
   // ---- 写真データ ----
-  // src に画像のパスを入れると実写真を表示する。空（null）の間は「NO IMAGE」の
-  // ダミーが出るだけで、枠・解放条件・キャプションはそのまま働く。
-  // 写真を入れるときは assets/photo/ に置いて src: 'assets/photo/p1.jpg' と書く。
+  // 実体は管理画面（KV）で編集する。ここにあるのは取得できなかったときのひな形。
+  // src が空の間は「NO IMAGE」のダミーが出るだけで、枠・解放条件・キャプションは働く。
   // cond: { flag: 'フラグ名' } … そのフラグが立っていれば解放。省略で最初から解放。
-  const PHOTOS = [
-    {
-      id: 'p1',
-      caption: '全員そろったアー写。',
-      cond: { flag: 'met_all' },
-      hint: '楽屋にいる全員と話す',
-      src: null, tint: '#8e2a20',
-    },
-    {
-      id: 'p2',
-      caption: '樽をかこんで一枚。',
-      cond: { flag: 'played_galaxy' },
-      hint: 'ゲーム機で遊ぶ',
-      src: null, tint: '#2b3a5c',
-    },
-    {
-      id: 'p3',
-      caption: 'きれいに整列した図。',
-      cond: { flag: 'galaxy_20000' },
-      hint: 'ゲームで20000点',
-      src: null, tint: '#3d2b5c',
-    },
+  const ADMIN = 'https://admin.ginmakuichiro.net';
+  const PHOTOS_API = ADMIN + '/data/backstage/photos.json';
+  const TINTS = ['#8e2a20', '#2b3a5c', '#3d2b5c', '#2b5c3d', '#5c4a2b', '#4a2b5c'];
+  let PHOTOS = [
+    { id: 'p1', caption: '', cond: { flag: 'met_all' }, hint: '楽屋にいる全員と話す', src: null, tint: TINTS[0] },
+    { id: 'p2', caption: '', cond: { flag: 'played_galaxy' }, hint: 'ゲーム機で遊ぶ', src: null, tint: TINTS[1] },
+    { id: 'p3', caption: '', cond: { flag: 'galaxy_20000' }, hint: 'ゲームで20000点', src: null, tint: TINTS[2] },
   ];
+
+  // 管理画面の設定を取り込む。取れなければ上のひな形のまま動く
+  function applyConfig(list) {
+    if (!Array.isArray(list) || !list.length) return false;
+    PHOTOS = list.map((p, i) => ({
+      id: String(p.id || `p${i + 1}`),
+      caption: p.caption || '',
+      cond: p.flag ? { flag: p.flag } : null,
+      hint: p.hint || '？？？',
+      src: p.img ? `${ADMIN}/img/${p.img}` : null,
+      tint: TINTS[i % TINTS.length],
+    }));
+    return true;
+  }
+  function fetchConfig() {
+    return fetch(PHOTOS_API, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => (d ? applyConfig(d.photos) : false))
+      .catch(() => false);
+  }
+  fetchConfig();
 
   // ---- 状態 ----
   const P = { idx: 0, opened: new Set(), t: 0, toast: '', toastT: 0 };
@@ -115,6 +120,8 @@
   }
 
   function drawPhoto(ctx) {
+    if (!PHOTOS.length) return;
+    if (P.idx >= PHOTOS.length) P.idx = 0;   // 管理画面で枚数が減っても崩れないように
     const p = PHOTOS[P.idx];
     const open = P.opened.has(p.id);
 
@@ -147,12 +154,19 @@
       }
     }
 
-    // 現在位置のドット
-    const dw = PHOTOS.length * 6;
-    PHOTOS.forEach((q, i) => {
-      ctx.fillStyle = i === P.idx ? '#e3b23c' : (P.opened.has(q.id) ? '#5a6070' : '#2b3040');
-      ctx.fillRect(Math.round(VW / 2 - dw / 2) + i * 6, VH - 17, 3, 3);
-    });
+    // 現在位置のドット。枚数が増えても画面からはみ出さないよう間隔を詰め、
+    // それでも入らないほど多いときは「3 / 20」のような数字に切り替える
+    const n = PHOTOS.length;
+    const step = Math.min(6, Math.floor((VW - 24) / Math.max(1, n)));
+    if (step >= 4) {   // これ未満だとドットが繋がって現在位置が読めない
+      const dw = n * step;
+      PHOTOS.forEach((q, i) => {
+        ctx.fillStyle = i === P.idx ? '#e3b23c' : (P.opened.has(q.id) ? '#5a6070' : '#2b3040');
+        ctx.fillRect(Math.round(VW / 2 - dw / 2) + i * step, VH - 17, 3, 3);
+      });
+    } else {
+      txt(ctx, `${P.idx + 1} / ${n}`, VW / 2, VH - 14, '#8c94a4', F.small, 'center');
+    }
     txt(ctx, '← → で送る / Z で閉じる', VW / 2, VH - 5, '#4a5268', F.small, 'center');
   }
 
@@ -191,14 +205,32 @@
     savedCv = null;
   }
 
+  // 実画像があるものを読み込んでおく。
+  // crossOrigin を付けるのは、別ドメインの画像を描いてもキャンバスが汚染されないようにするため
+  function preload() {
+    for (const p of PHOTOS) {
+      if (!p.src) continue;
+      const cur = imgs[p.id];
+      if (cur && cur.src === p.src) continue;   // 差し替えられていたら読み直す
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.src = p.src;
+      imgs[p.id] = im;
+    }
+  }
+
   // ---- 入力 ----
-  let navHeld = false;
+  // 押しっぱなしで送れるようにする（枚数が増えたとき1枚ずつだと大変なので）
+  const NAV_DELAY = 26, NAV_REPEAT = 7;   // 最初の1枚 → 少し待つ → 連続送り
+  let navHold = 0;
   function nav(keys) {
     const l = keys['arrowleft'] || keys['a'];
     const r = keys['arrowright'] || keys['d'];
-    if (!l && !r) { navHeld = false; return; }
-    if (navHeld) return;
-    navHeld = true;
+    if (!l && !r) { navHold = 0; return; }
+    const move = navHold === 0
+      || (navHold > NAV_DELAY && (navHold - NAV_DELAY) % NAV_REPEAT === 0);
+    navHold++;
+    if (!move || !PHOTOS.length) return;
     P.idx = (P.idx + (r ? 1 : PHOTOS.length - 1)) % PHOTOS.length;
   }
 
@@ -213,6 +245,8 @@
       api.active = true;
       lastPress = Date.now();
       P.t = 0;
+      // 管理画面で写真を足した直後でも反映されるよう、開くたびに設定を取り直す
+      fetchConfig().then(changed => { if (changed) preload(); });
       const fresh = syncOpened();
       // 未解放の写真があればそこではなく、解放済みの先頭から見せる
       P.idx = 0;
@@ -222,10 +256,7 @@
         const first = PHOTOS.findIndex(p => P.opened.has(p.id));
         if (first >= 0) P.idx = first;
       }
-      // 実画像があるものを読み込んでおく
-      for (const p of PHOTOS) {
-        if (p.src && !imgs[p.id]) { const im = new Image(); im.src = p.src; imgs[p.id] = im; }
-      }
+      preload();
     },
     exit() {
       api.active = false;

@@ -31,6 +31,7 @@
   button:disabled:hover { border-color: var(--line); }
   button.primary { background: var(--red); border-color: var(--red); color: #fff; }
   button.small { padding: 2px 8px; font-size: 12px; }
+  button.danger { border-color: #a33; color: #f0a0a0; }   /* 消す操作は色で区別する */
   #status { font-size: 12px; color: var(--dim); width: 100%; }
   #status.draft { color: var(--accent); }
   main { display: flex; gap: 0; min-height: calc(100vh - 60px); }
@@ -205,6 +206,11 @@ function renderSidebar() {
   lb.textContent = '🗺 配置（アセットの場所）';
   lb.onclick = () => { currentType = 'layout'; renderSidebar(); renderContent(); };
   nav.appendChild(lb);
+  const rb = document.createElement('button');
+  rb.className = 'speaker-btn' + (currentType === 'ranking' ? ' active' : '');
+  rb.textContent = '🏆 ランキング（ゲーム）';
+  rb.onclick = () => { currentType = 'ranking'; renderSidebar(); renderContent(); };
+  nav.appendChild(rb);
   const groups = [['npcs', 'メンバー'], ['objects', '調べられる家具']];
   for (const [type, label] of groups) {
     const h = document.createElement('h2');
@@ -303,6 +309,7 @@ function renderContent() {
   const c = $('#content');
   c.innerHTML = '';
   if (currentType === 'layout') { renderLayout(c); return; }
+  if (currentType === 'ranking') { renderRanking(c); return; }
   const speaker = data[currentType][currentId];
 
   // 名前
@@ -536,6 +543,73 @@ function pickAt(x, y) {
     if (hit(L.furniture[i], imgs[L.furniture[i].n])) return { type: 'furniture', idx: i };
   }
   return null;
+}
+
+// ---- ランキング管理 ----
+// スコアは誰でも投稿できる仕組みなので、おかしな記録をここから消せるようにしてある
+function renderRanking(c) {
+  const box = document.createElement('div');
+  box.className = 'topic';
+  const head = document.createElement('div');
+  head.className = 'topic-head';
+  const idx = document.createElement('span');
+  idx.className = 'idx';
+  idx.textContent = 'ギャラクシー☆銀河 ランキング';
+  head.appendChild(idx);
+  head.appendChild(mk('再読み込み', () => renderContent()));
+  head.appendChild(mk('全部消す', async () => {
+    if (!confirm('ランキングを全部消しますか？\n（消すと初期記録に戻ります）')) return;
+    await fetch('/api/backstage/scores/admin', {
+      method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ all: true }),
+    });
+    renderContent();
+  }, 'danger'));
+  box.appendChild(head);
+
+  const list = document.createElement('div');
+  list.textContent = '読み込み中…';
+  box.appendChild(list);
+  c.appendChild(box);
+
+  const note = document.createElement('div');
+  note.className = 'hint';
+  note.innerHTML = 'お客さんがゲーム中に登録した記録です。上位10件だけ残ります。'
+    + '<br>スコアはブラウザから送られてくるため、詳しい人なら偽の記録も送れます。'
+    + 'おかしな記録はここから消してください。';
+  c.appendChild(note);
+
+  fetch('/api/backstage/scores/admin')
+    .then(r => r.json())
+    .then(d => {
+      list.innerHTML = '';
+      const scores = d.scores || [];
+      if (!scores.length) { list.textContent = 'まだ記録がありません。'; return; }
+      scores.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'choice';
+        const r1 = document.createElement('div');
+        r1.className = 'row1';
+        const rank = document.createElement('input');
+        rank.type = 'text'; rank.readOnly = true; rank.style.maxWidth = '48px';
+        rank.value = (i + 1) + '位';
+        const nm = document.createElement('input');
+        nm.type = 'text'; nm.readOnly = true; nm.style.maxWidth = '80px';
+        nm.value = s.name;
+        const sc = document.createElement('input');
+        sc.type = 'text'; sc.readOnly = true;
+        sc.value = String(s.score).padStart(7, '0') + (s.at ? `　（${s.at}）` : '');
+        r1.append(rank, nm, sc, mk('削除', async () => {
+          if (!confirm(`${i + 1}位 ${s.name} ${s.score} を消しますか？`)) return;
+          await fetch('/api/backstage/scores/admin', {
+            method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ index: i }),
+          });
+          renderContent();
+        }, 'danger'));
+        row.appendChild(r1);
+        list.appendChild(row);
+      });
+    })
+    .catch(() => { list.textContent = '読み込みに失敗しました。'; });
 }
 
 function renderLayout(c) {

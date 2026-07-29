@@ -164,6 +164,27 @@
   function saveScores() {
     try { localStorage.setItem(HS_KEY, JSON.stringify(scores)); } catch (e) { /* 保存できなくても遊べる */ }
   }
+
+  // ---- 全員共通のランキング ----
+  // サーバー（Worker+KV）の記録を正とし、取れないときは手元の記録で遊べるようにする。
+  const SCORE_API = 'https://admin.ginmakuichiro.net/api/backstage/scores';
+  let syncState = 'local';   // 'local' | 'ok' | 'sending'
+  function applyRemote(list) {
+    if (!Array.isArray(list) || !list.length) return false;
+    scores = list
+      .filter(e => e && typeof e.name === 'string' && typeof e.score === 'number')
+      .map(e => [e.name, e.score]);
+    saveScores();            // 次回オフラインでも直近の順位表が出るように控えておく
+    syncState = 'ok';
+    return true;
+  }
+  function fetchScores() {
+    return fetch(SCORE_API, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => (d ? applyRemote(d.scores) : false))
+      .catch(() => false);   // 圏外でもゲームは続けられる
+  }
+  fetchScores();
   function rankOf(sc) {
     for (let i = 0; i < scores.length; i++) if (sc > scores[i][1]) return i;
     return scores.length < 10 ? scores.length : -1;
@@ -633,10 +654,26 @@
 
   function commitEntry() {
     const nm = S.name.map(i => NAME_CHARS[i]).join('').trim() || 'YOU';
+    // まず手元で反映して待たせない。サーバーの返事が来たら本当の順位に差し替える
     scores.splice(S.nrank, 0, [nm, S.score]);
     scores = scores.slice(0, 10);
     saveScores();
     S.scene = 'rank';
+    syncState = 'sending';
+    fetch(SCORE_API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: nm, score: S.score }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (d && applyRemote(d.scores)) {
+          if (typeof d.rank === 'number') S.nrank = d.rank;
+        } else {
+          syncState = 'local';
+        }
+      })
+      .catch(() => { syncState = 'local'; });
   }
 
   /* ============================ 描画 ============================ */
@@ -813,6 +850,8 @@
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, VW, VH);
     txt(ctx, 'RANKING', VW / 2, 16, '#ffd166', F.mid, 'center');
+    // 通信できていないときは、これが自分だけの記録だと分かるようにしておく
+    if (syncState === 'local') txt(ctx, 'この端末の記録', VW - 4, 10, '#6b7488', F.small, 'right');
     scores.slice(0, 10).forEach((s, i) => {
       const y = 30 + i * 10;
       const me = S.scene === 'rank' && i === S.nrank;
@@ -855,6 +894,7 @@
 
     start(onExit) {
       onExitCb = onExit || null;
+      fetchScores();          // 遊ぶたびに最新の順位表を取りに行く
       S = newState();
       S.scene = 'title';
       initStars();

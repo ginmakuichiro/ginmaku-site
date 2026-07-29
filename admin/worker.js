@@ -32,6 +32,18 @@ export default {
       }
       return json({ count: parseInt((await env.DATA.get('visitors')) || '0', 10) }, 200, cors);
     }
+    // 楽屋のシューティングの共通ランキング（ログイン不要。誰でも読めて投稿できる）
+    if (p === '/api/backstage/scores') {
+      const cors = {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET,POST,OPTIONS',
+        'access-control-allow-headers': 'content-type',
+      };
+      if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+      if (req.method === 'GET') return json({ scores: await loadScores(env) }, 200, cors);
+      if (req.method === 'POST') return postScore(req, env, cors);
+      return json({ error: 'method not allowed' }, 405, cors);
+    }
     if (p === '/api/login' && req.method === 'POST') return login(req, env);
     if (p.startsWith('/api/')) {
       if (!(await authed(req, env))) return json({ error: 'unauthorized' }, 401);
@@ -43,6 +55,20 @@ export default {
         const n = Math.max(0, parseInt(b.value, 10) || 0);
         await env.DATA.put('visitors', String(n));
         return json({ count: n });
+      }
+      // ランキングの管理（荒らされた記録を消す・全消し）
+      if (p === '/api/backstage/scores/admin' && req.method === 'GET') {
+        return json({ scores: await loadScores(env) });
+      }
+      if (p === '/api/backstage/scores/admin' && req.method === 'DELETE') {
+        const b = await req.json().catch(() => ({}));
+        if (b.all) { await env.DATA.delete(SCORES_KEY); return json({ scores: [] }); }
+        const i = parseInt(b.index, 10);
+        const list = await loadScores(env);
+        if (!(i >= 0 && i < list.length)) return json({ error: 'bad index' }, 400);
+        list.splice(i, 1);
+        await env.DATA.put(SCORES_KEY, JSON.stringify(list));
+        return json({ scores: list });
       }
       if (p === '/api/image' && req.method === 'POST') return uploadImage(req, env);
       const mi = p.match(/^\/api\/image\/(img_[\w-]+)$/);
@@ -316,6 +342,71 @@ async function hmac(env, data) {
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
   return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- 楽屋シューティングのランキング ---------- */
+
+const SCORES_KEY = 'backstage:scores';
+const SCORE_MAX_ENTRIES = 10;
+const SCORE_NAME_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!☆ ';
+const SCORE_LIMIT = 9999999;        // これを超える申告は受け付けない
+const SCORE_PER_MIN = 6;            // 同一IPから1分間に登録できる回数（連投荒らし対策）
+
+// まだ誰も遊んでいないときに並べておく初期記録（お客さんが挑む相手）
+const SCORE_DEFAULTS = [
+  { name: 'GIN', score: 30000 }, { name: 'KEN', score: 26000 }, { name: 'TAK', score: 22000 },
+  { name: 'AYA', score: 18000 }, { name: 'SAE', score: 15000 }, { name: 'TCF', score: 12000 },
+  { name: 'ARC', score: 9000 }, { name: 'SUS', score: 6000 }, { name: 'UFO', score: 3000 },
+  { name: 'YOU', score: 1000 },
+];
+
+// [{ name, score, at }] の配列。空や壊れている場合は初期記録を返す
+async function loadScores(env) {
+  let raw = [];
+  try {
+    const v = JSON.parse((await env.DATA.get(SCORES_KEY)) || '[]');
+    if (Array.isArray(v)) raw = v;
+  } catch (e) { /* 壊れていたら初期記録 */ }
+  const list = raw
+    .filter(e => e && typeof e.name === 'string' && Number.isFinite(e.score))
+    .slice(0, SCORE_MAX_ENTRIES);
+  return list.length ? list : SCORE_DEFAULTS.map(e => ({ ...e }));
+}
+
+// 3文字・使える文字だけ・大文字に正規化する
+function cleanName(v) {
+  const s = String(v == null ? '' : v).toUpperCase().slice(0, 3);
+  let out = '';
+  for (const ch of s) out += SCORE_NAME_CHARS.includes(ch) ? ch : ' ';
+  return (out + '   ').slice(0, 3);
+}
+
+async function postScore(req, env, cors) {
+  // 連続して遊べば1分に何度も登録しうるので、1回きりではなく回数で制限する
+  const ip = req.headers.get('cf-connecting-ip') || '';
+  if (ip) {
+    const rl = `sc_rl:${ip}`;
+    const n = parseInt((await env.DATA.get(rl)) || '0', 10) + 1;
+    if (n > SCORE_PER_MIN) return json({ error: 'too many requests' }, 429, cors);
+    await env.DATA.put(rl, String(n), { expirationTtl: 60 }); // KVの最小TTLは60秒
+  }
+
+  const b = await req.json().catch(() => ({}));
+  const score = Math.floor(Number(b.score));
+  if (!Number.isFinite(score) || score <= 0 || score > SCORE_LIMIT) {
+    return json({ error: 'bad score' }, 400, cors);
+  }
+  const name = cleanName(b.name);
+
+  const list = await loadScores(env);
+  list.push({ name, score, at: new Date().toISOString().slice(0, 10) });
+  list.sort((a, b2) => b2.score - a.score);
+  const kept = list.slice(0, SCORE_MAX_ENTRIES);
+  await env.DATA.put(SCORES_KEY, JSON.stringify(kept));
+
+  // 今回の記録が何位に入ったか（圏外なら -1）
+  const rank = kept.findIndex(e => e.name === name && e.score === score);
+  return json({ scores: kept, rank }, 200, cors);
 }
 
 function json(data, status = 200, headers = {}) {

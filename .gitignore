@@ -1,0 +1,5 @@
+# wrangler dev のローカル状態（KVの中身などが入る。共有しない）
+.wrangler/
+admin/.wrangler/
+
+.DS_Store

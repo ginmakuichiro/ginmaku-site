@@ -26,8 +26,6 @@ function cameraPos() {
 // ---- アセット読み込み ----
 // ASSET_VER: ドット絵を差し替えたら日付を更新する（ブラウザキャッシュ対策）
 const ASSET_VER = '20260726';
-// desk/laptop/photobook は管理画面で配置できるようにした家具。
-// 楽屋に置かれても今は飾りとして描くだけ（写真ビューアなどの機能は未公開）
 const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook'];
 const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
 const img = {};
@@ -207,6 +205,9 @@ function applyLayout() {
     }
   }
   layoutReady = true;
+  loadEarned();
+  if (window.Photos) Photos.bind(flags);   // 解放条件の判定に flags を使う
+  if (window.Shooter) Shooter.onEvent = onGalaxyEvent;
 }
 
 // ---- ゲーム状態 ----
@@ -235,6 +236,43 @@ const dialog = {
   pendingSet: null, // トピック終了時に立てるフラグ
 };
 
+// ---- 実績フラグ ----
+// 「全員と話した」「ゲームで遊んだ」など、いちど達成したらブラウザを閉じても
+// 消えてほしいフラグはここで保存する。時間帯や天気のフラグは毎回変わるので対象外。
+const EARNED_KEY = 'gakuya_earned_v1';
+const GALAXY_SCORES = [5000, 20000];  // この点を超えたら galaxy_5000 / galaxy_20000 が立つ
+
+function loadEarned() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EARNED_KEY) || '[]');
+    if (Array.isArray(raw)) raw.forEach(k => { flags[k] = true; });
+  } catch (e) { /* 壊れていたら無視 */ }
+}
+function earn(name) {
+  if (flags[name]) return;
+  flags[name] = true;
+  try {
+    const raw = JSON.parse(localStorage.getItem(EARNED_KEY) || '[]');
+    const set = Array.isArray(raw) ? raw : [];
+    if (!set.includes(name)) { set.push(name); localStorage.setItem(EARNED_KEY, JSON.stringify(set)); }
+  } catch (e) { /* 保存できなくてもその場では有効 */ }
+}
+
+// 楽屋にいる全員と話したら met_all を立てる（写真1枚目の解放条件）
+function updateMetAll() {
+  if (flags.met_all || !npcs.length) return;
+  if (npcs.every(n => talkCount[n.id])) earn('met_all');
+}
+
+// シューティング側からの通知をフラグに変換する
+function onGalaxyEvent(name, value) {
+  if (name === 'play') earn('played_galaxy');
+  else if (name === 'allclear') earn('galaxy_allclear');
+  else if (name === 'score') {
+    for (const th of GALAXY_SCORES) if (value >= th) earn('galaxy_' + th);
+  }
+}
+
 function checkCond(cond) {
   if (!cond) return true;
   if (cond.startsWith('!')) return !flags[cond.slice(1)];
@@ -260,19 +298,30 @@ function pickTopic(speakerId, topics) {
 
 // ---- イベント ----
 // 会話や選択肢に { event: { type, ... } } を付けると、会話を閉じたあとに実行する。
-// 管理画面の「イベント」欄から編集できる。
-// 公開サイトで動くのは今のところ url（ページ移動）だけ。ゲームや写真アルバムは
-// 未公開なので、その種類が指定されていても何もしない（エラーにはしない）。
-// 旧形式の url もそのまま読めるようにしてある。
+// 管理画面の「イベント」欄から編集できる。知らない type は何もしない（＝機能が
+// まだ公開されていない環境でも壊れない）。
+// 旧形式の url / game / view もそのまま読めるようにしてある。
 function eventOf(src) {
   if (!src) return null;
   if (src.event && src.event.type) return src.event;
+  if (src.game) return { type: 'game', id: src.game };
+  if (src.view) return { type: 'photos' };
   if (src.url) return { type: 'url', value: src.url };
   return null;
 }
 
 function runEvent(ev) {
   if (!ev) return false;
+  if (ev.type === 'game') {
+    if (!window.Shooter) return false;
+    startMinigame();
+    return true;
+  }
+  if (ev.type === 'photos') {
+    if (!window.Photos) return false;
+    startViewer();
+    return true;
+  }
   if (ev.type === 'url' && ev.value) {
     window.location.href = ev.value; // 会話を終えてからページ移動（例: ドアから退出）
     return true;
@@ -287,6 +336,7 @@ function startDialog(speakerId, data, isObject) {
   const { t, i } = picked;
   if (t.once) usedOnce.add(`${speakerId}:${i}`);
   talkCount[speakerId] = (talkCount[speakerId] || 0) + 1;
+  updateMetAll();
   dialog.active = true;
   dialog.name = isObject ? '' : (data.name || speakerId);
   dialog.lines = t.lines && t.lines.length ? expandLines(t.lines) : ['……'];
@@ -309,6 +359,39 @@ function endDialog() {
   runEvent(ev);
 }
 
+// ---- ミニゲーム（アーケード筐体）----
+const hintEl = document.getElementById('hint');
+const HINT_RPG = hintEl ? hintEl.innerHTML : '';
+const HINT_GAME = '矢印キー / WASD で移動、<b>Z</b> か <b>スペース</b> でショット（押しっぱなしで連射）';
+
+function startMinigame() {
+  if (!window.Shooter) return;
+  for (const k in keys) keys[k] = false; // 移動キーを持ち越さない
+  if (btnA) { btnA.textContent = 'ショット'; btnA.classList.add('shot'); }
+  if (hintEl) hintEl.innerHTML = HINT_GAME;
+  Shooter.start(() => {
+    for (const k in keys) keys[k] = false;
+    if (btnA) { btnA.textContent = '話す'; btnA.classList.remove('shot'); }
+    if (hintEl) hintEl.innerHTML = HINT_RPG;
+  });
+}
+
+// ---- 写真ビューア（ノートパソコン）----
+const HINT_PHOTO = '<b>←→</b> で写真を送る、<b>Z</b> か <b>スペース</b> で閉じる';
+
+function startViewer() {
+  if (!window.Photos) return;
+  for (const k in keys) keys[k] = false;
+  if (btnA) { btnA.textContent = '閉じる'; btnA.classList.add('shot'); }
+  if (hintEl) hintEl.innerHTML = HINT_PHOTO;
+  Photos.start(() => {
+    resetTransform();   // ビューアがキャンバスの解像度を変えるので戻す
+    for (const k in keys) keys[k] = false;
+    if (btnA) { btnA.textContent = '話す'; btnA.classList.remove('shot'); }
+    if (hintEl) hintEl.innerHTML = HINT_RPG;
+  });
+}
+
 // ---- 対象検索 ----
 function nearestNpc() {
   let best = null, bestD = 22;
@@ -329,6 +412,8 @@ function nearestObject() {
 
 // ---- アクション（Z/スペース/話すボタン）----
 function action() {
+  if (window.Shooter && Shooter.active) { Shooter.press(); return; }
+  if (window.Photos && Photos.active) { Photos.press(); return; }
   if (!scenario) return;
   if (dialog.active) {
     if (dialog.phase === 'choice') {
@@ -438,8 +523,11 @@ document.querySelectorAll('#dpad .pbtn').forEach(b => {
   b.addEventListener('mousedown', on); b.addEventListener('mouseup', off);
 });
 const btnA = document.getElementById('btnA');
-btnA.addEventListener('touchstart', e => { e.preventDefault(); action(); });
-btnA.addEventListener('mousedown', e => { e.preventDefault(); action(); });
+// 押しっぱなしを keys['z'] に流すのはミニゲームの連射用
+const aOn = e => { e.preventDefault(); keys['z'] = true; action(); };
+const aOff = e => { e.preventDefault(); keys['z'] = false; };
+btnA.addEventListener('touchstart', aOn); btnA.addEventListener('touchend', aOff);
+btnA.addEventListener('mousedown', aOn); btnA.addEventListener('mouseup', aOff);
 
 // ---- 更新 ----
 function collides(x, y) {
@@ -573,6 +661,16 @@ function frame() {
     ctx.fillStyle = '#b8c2c8';
     ctx.font = '10px monospace';
     ctx.fillText('Loading...', VW / 2 - 25, VH / 2);
+  } else if (window.Shooter && Shooter.active) {
+    // アーケード筐体のミニゲーム中は画面をまるごと明け渡す
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, VW, VH);
+    Shooter.step(keys, ctx);
+  } else if (window.Photos && Photos.active) {
+    // ノートパソコンの写真ビューアも同じく画面をまるごと使う
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, VW, VH);
+    Photos.step(keys, ctx);
   } else {
     if (!layoutReady) applyLayout();
     startIntro();
@@ -596,4 +694,9 @@ function frame() {
 frame();
 
 // デバッグ・拡張用フック
-window.__game = { player, dialog, action, flags, moveCursor, get scenario() { return scenario; }, get npcs() { return npcs; } };
+window.__game = {
+  player, dialog, action, flags, moveCursor,
+  get scenario() { return scenario; },
+  get npcs() { return npcs; },
+  get objectSpots() { return objectSpots; },
+};

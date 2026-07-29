@@ -69,8 +69,13 @@
     font-weight: bold;
   }
   #btnA:active { background: #8e2a20; }
+  /* ミニゲーム中は「ショット」が1行に収まるよう少し小さく */
+  #btnA.shot { font-size: 13px; }
   /* タッチ端末: 画面上部にゲーム、下部に操作ボタンを固定したゲーム機風レイアウト
      （bodyの .touch クラスはJSでタッチ検出して付与） */
+  /* 高さは JS が visualViewport（実際に見えている領域）から --app-h に入れる。
+     100dvh はAndroid系でナビゲーションバーの分を含んだ値を返すことがあり、
+     下段のボタンがバーの裏に隠れてしまうため当てにしない（dvhは非対応時の保険）。 */
   /* html側の上下中央寄せが残っていると、縮めたbodyごと下へ押し出されて
      操作ボタンが画面外に出る。タッチ時は通常のブロックに戻す。 */
   html.touch {
@@ -79,9 +84,6 @@
     min-height: 0;
     overflow: hidden;
   }
-  /* 高さは JS が visualViewport（実際に見えている領域）から --app-h に入れる。
-     100dvh はAndroid系でナビゲーションバーの分を含んだ値を返すことがあり、
-     下段のボタンがバーの裏に隠れてしまうため当てにしない（dvhは非対応時の保険）。 */
   body.touch {
     justify-content: flex-start;
     height: var(--app-h, 100dvh);
@@ -109,6 +111,7 @@
   }
   body.touch .pbtn { font-size: 24px; }
   body.touch #btnA { width: 84px; height: 84px; font-size: 20px; }
+  body.touch #btnA.shot { font-size: 15px; }
   body.touch #hint { display: none; }
 
   /* ---------- 導入演出：黒画面のタイトル → モザイクが解けて楽屋へ ---------- */
@@ -163,6 +166,8 @@
     window.addEventListener('orientationchange', () => setTimeout(apply, 250));
   })();
 </script>
+<script src="shooter.js?v=20260729a"></script>
+<script src="photos.js?v=20260729e"></script>
 <script src="game.js?v=20260730a"></script>
 </body>
 </html>

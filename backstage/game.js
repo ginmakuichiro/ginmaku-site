@@ -202,6 +202,7 @@ function applyLayout() {
         id: f.n,
         x: f.x + im.width / 2,
         y: Math.max(bottom + 4, WALL + 6),
+        top: f.y,               // 「？」を家具の上に出すために天面の位置を覚えておく
       });
     }
   }
@@ -257,14 +258,15 @@ function pickTopic(speakerId, topics) {
   return eligible[count % eligible.length];
 }
 
-function startDialog(speakerId, data) {
+// isObject: 家具など人物以外。名前欄は出さずセリフだけ見せる
+function startDialog(speakerId, data, isObject) {
   const picked = pickTopic(speakerId, data.topics || []);
   if (!picked) return;
   const { t, i } = picked;
   if (t.once) usedOnce.add(`${speakerId}:${i}`);
   talkCount[speakerId] = (talkCount[speakerId] || 0) + 1;
   dialog.active = true;
-  dialog.name = data.name || speakerId;
+  dialog.name = isObject ? '' : (data.name || speakerId);
   dialog.lines = t.lines && t.lines.length ? expandLines(t.lines) : ['……'];
   dialog.lineIdx = 0;
   dialog.chars = 0;
@@ -340,7 +342,7 @@ function action() {
   const npc = nearestNpc();
   if (npc && scenario.npcs[npc.id]) { startDialog(npc.id, scenario.npcs[npc.id]); return; }
   const obj = nearestObject();
-  if (obj && scenario.objects[obj.id]) startDialog(obj.id, scenario.objects[obj.id]);
+  if (obj && scenario.objects[obj.id]) startDialog(obj.id, scenario.objects[obj.id], true);
 }
 
 function moveCursor(dir) {
@@ -472,7 +474,10 @@ function drawSprites() {
       if (obj) {
         ctx.fillStyle = '#9ee1ff';
         ctx.font = 'bold 8px monospace';
-        ctx.fillText('?', obj.x - 2, obj.y - 8);
+        ctx.textAlign = 'center';
+        // メンバーの「！」と同じく、対象そのものに被らないよう真上に出す
+        ctx.fillText('?', Math.round(obj.x), Math.round(obj.top) - 3);
+        ctx.textAlign = 'left';
       }
     }
   }
@@ -498,13 +503,16 @@ function drawDialog() {
   ctx.strokeStyle = '#dde4e8';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 1.5, by + 1.5, bw - 3, bh - 3);
-  ctx.fillStyle = '#f2d178';
-  ctx.font = 'bold 8px sans-serif';
-  ctx.fillText(dialog.name, bx + 7, by + 11);
+  if (dialog.name) {
+    ctx.fillStyle = '#f2d178';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillText(dialog.name, bx + 7, by + 11);
+  }
   ctx.fillStyle = '#ffffff';
   ctx.font = '7px sans-serif';
   const text = dialog.lines[dialog.lineIdx].slice(0, Math.floor(dialog.chars));
-  wrapText(text, bw - 18, bx + 7, by + 21, 9);
+  // 名前欄が無いときはその分セリフを上に詰める
+  wrapText(text, bw - 18, bx + 7, by + (dialog.name ? 21 : 13), 9);
   const lineDone = Math.floor(dialog.chars) >= dialog.lines[dialog.lineIdx].length;
   if (dialog.phase === 'lines' && lineDone && (Date.now() / 400 | 0) % 2) {
     ctx.fillStyle = '#f2d178';

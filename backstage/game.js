@@ -26,7 +26,9 @@ function cameraPos() {
 // ---- アセット読み込み ----
 // ASSET_VER: ドット絵を差し替えたら日付を更新する（ブラウザキャッシュ対策）
 const ASSET_VER = '20260726';
-const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug'];
+// desk/laptop/photobook は管理画面で配置できるようにした家具。
+// 楽屋に置かれても今は飾りとして描くだけ（写真ビューアなどの機能は未公開）
+const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook'];
 const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
 const img = {};
 let loaded = 0, total = ROOM_IMGS.length + MEMBER_IMGS.length;

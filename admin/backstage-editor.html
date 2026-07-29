@@ -68,6 +68,11 @@
   .cond-row .field { flex: 1; min-width: 140px; margin-bottom: 0; }
   .cond-row input { width: 100%; }
   .once-label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  /* イベント欄（会話を閉じたあとに起きること） */
+  .ev-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .ev-row select { min-width: 170px; }
+  .ev-row .ev-arg { flex: 1; min-width: 140px; }
+  .ev-row .ev-note { font-size: 11px; color: var(--dim); }
   .choices { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
   .choice {
     background: var(--panel2); border-radius: 6px; padding: 8px; margin-bottom: 6px;
@@ -224,6 +229,76 @@ function field(labelText, el) {
   return d;
 }
 
+// ---- イベント（会話を閉じたあとに起きること）----
+// node（会話 or 選択肢）に { event: { type, ... } } を読み書きする。
+// published:false のものはゲーム側がまだ公開されていないので、その旨を出す。
+const EVENT_TYPES = [
+  { type: '', label: 'なし', arg: null },
+  { type: 'url', label: 'ページへ移動', arg: { key: 'value', ph: '例: /  /schedule' } },
+  { type: 'game', label: 'ゲームを起動', arg: { key: 'id', ph: 'ゲーム名', fixed: 'galaxy' }, published: false },
+  { type: 'photos', label: '写真アルバムを開く', arg: null, published: false },
+];
+
+// 旧形式（game / view / url が直接置かれている）を event に読み替える
+function readEvent(node) {
+  if (node.event && node.event.type) return node.event;
+  if (node.game) return { type: 'game', id: node.game };
+  if (node.view) return { type: 'photos' };
+  if (node.url) return { type: 'url', value: node.url };
+  return null;
+}
+
+function eventRow(node) {
+  const row = document.createElement('div');
+  row.className = 'ev-row';
+  const cur = readEvent(node) || { type: '' };
+
+  const sel = document.createElement('select');
+  EVENT_TYPES.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.type;
+    o.textContent = e.label + (e.published === false ? '（未公開）' : '');
+    sel.appendChild(o);
+  });
+  sel.value = cur.type;
+
+  const write = (type, argVal) => {
+    // 旧形式が残っていると二重に効くので消しておく
+    delete node.game; delete node.view; delete node.url;
+    if (!type) { delete node.event; return; }
+    const def = EVENT_TYPES.find(e => e.type === type);
+    const ev = { type };
+    if (def && def.arg) ev[def.arg.key] = argVal || def.arg.fixed || '';
+    node.event = ev;
+  };
+
+  sel.onchange = () => {
+    const def = EVENT_TYPES.find(e => e.type === sel.value);
+    write(sel.value, def && def.arg ? def.arg.fixed : '');
+    renderContent();
+  };
+  row.append(field('イベント', sel));
+
+  const def = EVENT_TYPES.find(e => e.type === cur.type);
+  if (def && def.arg) {
+    const arg = document.createElement('input');
+    arg.type = 'text';
+    arg.placeholder = def.arg.ph;
+    arg.value = cur[def.arg.key] || '';
+    arg.oninput = () => write(cur.type, arg.value.trim());
+    const wrap = field(def.label + 'の指定', arg);
+    wrap.className = 'field ev-arg';
+    row.appendChild(wrap);
+  }
+  if (def && def.published === false) {
+    const note = document.createElement('span');
+    note.className = 'ev-note';
+    note.textContent = '※ 公開サイトではまだ動きません';
+    row.appendChild(note);
+  }
+  return row;
+}
+
 function renderContent() {
   const c = $('#content');
   c.innerHTML = '';
@@ -299,6 +374,9 @@ function renderContent() {
     ta.oninput = () => { t.lines = ta.value.split('\n').filter(l => l.trim() !== ''); };
     card.appendChild(field('セリフ（1行 = 1ページ）', ta));
 
+    // 会話そのもののイベント（選択肢が無いときはこれが実行される）
+    card.appendChild(eventRow(t));
+
     // 選択肢
     const chDiv = document.createElement('div');
     chDiv.className = 'choices';
@@ -317,18 +395,14 @@ function renderContent() {
       chSetIn.placeholder = '選ぶと立つフラグ（任意）';
       chSetIn.value = ch.set || '';
       chSetIn.oninput = () => { if (chSetIn.value.trim()) ch.set = chSetIn.value.trim(); else delete ch.set; };
-      const chUrlIn = document.createElement('input');
-      chUrlIn.type = 'text';
-      chUrlIn.placeholder = '会話後の移動先URL（任意。例: /）';
-      chUrlIn.value = ch.url || '';
-      chUrlIn.oninput = () => { if (chUrlIn.value.trim()) ch.url = chUrlIn.value.trim(); else delete ch.url; };
-      row1.append(labelIn, chSetIn, chUrlIn,
+      row1.append(labelIn, chSetIn,
         mk('削除', () => { t.choices.splice(ci, 1); if (!t.choices.length) delete t.choices; renderContent(); }));
       const chTa = document.createElement('textarea');
       chTa.placeholder = '選んだ後の返事（1行 = 1ページ）';
       chTa.value = (ch.lines || []).join('\n');
       chTa.oninput = () => { ch.lines = chTa.value.split('\n').filter(l => l.trim() !== ''); };
-      box.append(row1, chTa);
+      // この選択肢を選んだときのイベント（移動先URLもここに統合した）
+      box.append(row1, chTa, eventRow(ch));
       chDiv.appendChild(box);
     });
     chDiv.appendChild(mk('+ 選択肢を追加', () => {

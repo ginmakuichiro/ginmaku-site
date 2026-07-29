@@ -258,6 +258,28 @@ function pickTopic(speakerId, topics) {
   return eligible[count % eligible.length];
 }
 
+// ---- イベント ----
+// 会話や選択肢に { event: { type, ... } } を付けると、会話を閉じたあとに実行する。
+// 管理画面の「イベント」欄から編集できる。
+// 公開サイトで動くのは今のところ url（ページ移動）だけ。ゲームや写真アルバムは
+// 未公開なので、その種類が指定されていても何もしない（エラーにはしない）。
+// 旧形式の url もそのまま読めるようにしてある。
+function eventOf(src) {
+  if (!src) return null;
+  if (src.event && src.event.type) return src.event;
+  if (src.url) return { type: 'url', value: src.url };
+  return null;
+}
+
+function runEvent(ev) {
+  if (!ev) return false;
+  if (ev.type === 'url' && ev.value) {
+    window.location.href = ev.value; // 会話を終えてからページ移動（例: ドアから退出）
+    return true;
+  }
+  return false;
+}
+
 // isObject: 家具など人物以外。名前欄は出さずセリフだけ見せる
 function startDialog(speakerId, data, isObject) {
   const picked = pickTopic(speakerId, data.topics || []);
@@ -274,7 +296,7 @@ function startDialog(speakerId, data, isObject) {
   dialog.choices = t.choices && t.choices.length ? t.choices : null;
   dialog.choiceIdx = 0;
   dialog.pendingSet = t.set || null;
-  dialog.pendingUrl = t.url || null;
+  dialog.pendingEvent = eventOf(t);
 }
 
 function endDialog() {
@@ -282,11 +304,9 @@ function endDialog() {
   dialog.active = false;
   dialog.choices = null;
   dialog.pendingSet = null;
-  if (dialog.pendingUrl) {
-    const url = dialog.pendingUrl;
-    dialog.pendingUrl = null;
-    window.location.href = url; // 会話を終えてからページ移動（例: ドアから退出）
-  }
+  const ev = dialog.pendingEvent;
+  dialog.pendingEvent = null;
+  runEvent(ev);
 }
 
 // ---- 対象検索 ----
@@ -314,7 +334,8 @@ function action() {
     if (dialog.phase === 'choice') {
       const c = dialog.choices[dialog.choiceIdx];
       if (c.set) flags[c.set] = true;
-      if (c.url) dialog.pendingUrl = c.url;
+      const cev = eventOf(c);
+      if (cev) dialog.pendingEvent = cev;   // 選択肢のイベントは会話側より優先
       dialog.choices = null;
       if (c.lines && c.lines.length) {
         dialog.lines = expandLines(c.lines);

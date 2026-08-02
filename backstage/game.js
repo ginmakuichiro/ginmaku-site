@@ -40,26 +40,18 @@ ROOM_IMGS.forEach(n => load(n, `assets/room/${n}.png`));
 MEMBER_IMGS.forEach(n => load(n, `assets/member/${n}.png`));
 
 // ---- シナリオ読み込み ----
-// 優先順: ?draft=1 → 管理画面の下書き(KV) / 通常 → ローカル下書き(開発用) → KV公開版 → 同梱scenario.json
+// 優先順: ?draft=1 → 管理画面の下書き(KV) / 通常 → KV公開版 → 同梱scenario.json
+//
+// ブラウザに保存された下書き（localStorage）は読まない。以前このサイトに置いていた
+// エディタが書き込んだ下書きが残っている人がいて、それを読むと何年でも古い楽屋が
+// 表示され続けるため。開発用のエディタは gakuya-game 側にあり、そちらは従来どおり。
 const DRAFT_KEY = 'gakuya_scenario_draft';
 const SCENARIO_API = 'https://admin.ginmakuichiro.net/data/backstage/scenario.json';
 let scenario = null;
 let usingDraft = false;
+try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* 消せなくても実害はない */ }
 (function loadScenario() {
   const preview = new URLSearchParams(location.search).get('draft') === '1';
-  if (!preview) {
-    const draft = localStorage.getItem(DRAFT_KEY);
-    if (draft) {
-      try {
-        const d = JSON.parse(draft);
-        if (d.layout) { // 旧形式（配置データなし）の下書きは無視
-          scenario = d;
-          usingDraft = true;
-          return;
-        }
-      } catch (e) { /* 壊れた下書きは無視 */ }
-    }
-  }
   const fallback = () =>
     fetch('scenario.json', { cache: 'no-cache' })
       .then(r => r.json())

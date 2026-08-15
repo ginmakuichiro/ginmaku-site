@@ -404,6 +404,7 @@ function nearestObject() {
 
 // ---- アクション（Z/スペース/話すボタン）----
 function action() {
+  if (!introDone) return; // 導入演出中は話しかけられない（移動と同じ扱い）
   if (window.Shooter && Shooter.active) { Shooter.press(); return; }
   if (window.Photos && Photos.active) { Photos.press(); return; }
   if (!scenario) return;
@@ -535,7 +536,7 @@ function collides(x, y) {
 }
 
 function update() {
-  if (introT0 !== null && Date.now() - introT0 < INTRO_HOLD_MS) return; // 黒画面中は動かさない
+  if (!introDone) return; // 導入演出（黒画面〜モザイクが解けるまで）の間は動かさない
   if (dialog.active) {
     if (dialog.phase === 'lines' && dialog.chars < dialog.lines[dialog.lineIdx].length) dialog.chars += 0.5;
     return;

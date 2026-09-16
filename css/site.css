@@ -357,12 +357,7 @@ footer .sns a:hover{color:var(--gold)}
   font-size:.72rem;letter-spacing:.08em;
   color:var(--curtain-deep);background:var(--gold);border-radius:2px;vertical-align:middle;
 }
-.yt-member-text{font-size:.82rem;color:var(--ink-soft);line-height:1.8;margin-bottom:8px}
-.yt-member-link{
-  display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.06em;
-  color:var(--curtain);text-decoration:none;border-bottom:1px solid var(--curtain);
-}
-.yt-member-link:hover{color:var(--gold);border-color:var(--gold)}
+.yt-member-text{font-size:.82rem;color:var(--ink-soft);line-height:1.8}
 
 /* ---------- profile duo ---------- */
 .profile-duo{align-items:start;margin-top:14px}

@@ -346,6 +346,24 @@ footer .sns a:hover{color:var(--gold)}
 .video-intro .yt-play{width:46px;height:46px;font-size:1rem}
 .video-intro .yt-text b{font-size:.95rem}
 
+/* ---------- youtube membership ---------- */
+.yt-member{
+  margin-top:14px;padding:14px 18px;
+  background:var(--screen-dim);border:1px dashed var(--gold);border-radius:6px;
+}
+.yt-member-head{font-size:.95rem;font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+.yt-member-price{
+  display:inline-block;margin-left:8px;padding:1px 10px;
+  font-size:.72rem;letter-spacing:.08em;
+  color:var(--curtain-deep);background:var(--gold);border-radius:2px;vertical-align:middle;
+}
+.yt-member-text{font-size:.82rem;color:var(--ink-soft);line-height:1.8;margin-bottom:8px}
+.yt-member-link{
+  display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.06em;
+  color:var(--curtain);text-decoration:none;border-bottom:1px solid var(--curtain);
+}
+.yt-member-link:hover{color:var(--gold);border-color:var(--gold)}
+
 /* ---------- profile duo ---------- */
 .profile-duo{align-items:start;margin-top:14px}
 .profile-side-photo img{width:100%;height:auto;border-radius:4px}

@@ -271,6 +271,17 @@ function checkCond(cond) {
   return !!flags[cond];
 }
 
+// 表示期間（管理画面の「表示期間」）: from/until は 'YYYY-MM-DD'、どちらも省略可・当日を含む。
+// from だけ→その日以降ずっと / until だけ→その日まで / 両方同じ日→その日だけ
+function inDateRange(t) {
+  if (!t.from && !t.until) return true;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (t.from && today < t.from) return false;
+  if (t.until && today > t.until) return false;
+  return true;
+}
+
 // 話しかけ/調べた時のトピック選択：
 // 「一度だけ」のトピック（イベント）が最優先。
 // それ以外は条件を満たすもの全部を、話しかけるたびに上から順にローテーション
@@ -279,6 +290,7 @@ function pickTopic(speakerId, topics) {
   topics.forEach((t, i) => {
     if (t.once && usedOnce.has(`${speakerId}:${i}`)) return;
     if (!checkCond(t.if)) return;
+    if (!inDateRange(t)) return;
     eligible.push({ t, i });
   });
   if (!eligible.length) return null;

@@ -389,6 +389,21 @@ function renderContent() {
     condRow.appendChild(onceLabel);
     card.appendChild(condRow);
 
+    // 表示期間（日付指定のセリフ）
+    const dateRow = document.createElement('div');
+    dateRow.className = 'cond-row';
+    const fromIn = document.createElement('input');
+    fromIn.type = 'date';
+    fromIn.value = t.from || '';
+    fromIn.oninput = () => { if (fromIn.value) t.from = fromIn.value; else delete t.from; };
+    dateRow.appendChild(field('表示開始日（この日から。空欄=制限なし）', fromIn));
+    const untilIn = document.createElement('input');
+    untilIn.type = 'date';
+    untilIn.value = t.until || '';
+    untilIn.oninput = () => { if (untilIn.value) t.until = untilIn.value; else delete t.until; };
+    dateRow.appendChild(field('表示終了日（この日まで。空欄=制限なし）', untilIn));
+    card.appendChild(dateRow);
+
     // セリフ
     const ta = document.createElement('textarea');
     ta.value = (t.lines || []).join('\n');
@@ -452,6 +467,7 @@ function renderContent() {
     ・<b>一度だけ</b>の会話（イベント）が最優先。それ以外は条件を満たす会話が、話しかけるたびに上から順番に切り替わります。<br>
     ・「〇〇に話した後だけ変化」させるには：話す側の会話に <code>フラグ名</code>（会話後に立てるフラグ）を入れ、変化させたい側の会話の表示条件に同じ <code>フラグ名</code> を入れます。<br>
     ・選択肢で受け答えを変えるには：選択肢にフラグを設定し、別の会話の表示条件でそのフラグを参照します。<br>
+    ・<b>表示期間</b>で日付指定のセリフが作れます：終了日だけ＝その日まで / 開始日だけ＝その日以降ずっと / 両方同じ日＝その日だけ（当日を含む・日本時間の日付）。表示条件と併用可。<br>
     ・セリフに使えるプレースホルダ： <code>{{next_live}}</code>＝直近ライブ3件 / <code>{{news}}</code>＝最新ニュース3件 / <code>{{visitors}}</code>＝サイト訪問者数 / <code>{{live_countdown}}</code>＝次のライブまで「あと◯日」 / <code>{{weather}}</code>＝今の東京の天気。<br>
     ・表示条件に使える自動フラグ： <code>time_morning</code>(5-10時) <code>time_day</code>(11-17時) <code>time_evening</code>(18-22時) <code>time_night</code>(23-4時) / <code>live_today</code> <code>live_tomorrow</code> <code>live_soon</code>(7日以内) / <code>weather_clear</code> <code>weather_cloudy</code> <code>weather_rain</code> <code>weather_snow</code>。<br>
     ・<b>下書き保存</b>→<b>プレビュー</b>で確認し、<b>公開</b>を押すと全訪問者に即反映されます。`;
@@ -672,8 +688,16 @@ function renderPhotos(c) {
     const other = document.createElement('option');
     other.value = '__other__'; other.textContent = 'その他（フラグ名を直接書く）';
     sel.appendChild(other);
-    sel.value = known ? (p.flag || '') : '__other__';
-    sel.onchange = () => { p.flag = sel.value === '__other__' ? (p.flag || '') : sel.value; renderContent(); };
+    // 「その他」を選んだことは p._other に覚えておく。現在のフラグが定型リストに
+    // ある場合（「条件なし」= 空文字も含む）、これが無いと再描画で選択が元に戻ってしまう。
+    // _other は画面の中だけの印で、保存時にサーバー側が捨てるのでデータには残らない
+    if (p._other === undefined) p._other = !known;
+    sel.value = p._other ? '__other__' : (p.flag || '');
+    sel.onchange = () => {
+      if (sel.value === '__other__') { p._other = true; }
+      else { p._other = false; p.flag = sel.value; }
+      renderContent();
+    };
     row.appendChild(field('見られるようになる条件', sel));
 
     if (sel.value === '__other__') {

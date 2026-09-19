@@ -26,7 +26,7 @@ function cameraPos() {
 // ---- アセット読み込み ----
 // ASSET_VER: ドット絵を差し替えたら日付を更新する（ブラウザキャッシュ対策）
 const ASSET_VER = '20260726';
-const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook'];
+const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook','banner_soldout','carpet_red'];
 const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
 const img = {};
 let loaded = 0, total = ROOM_IMGS.length + MEMBER_IMGS.length;
@@ -162,6 +162,8 @@ function expandLines(lines) {
 
 // ---- 配置（scenario.json の layout から構築）----
 // 衝突判定と「調べる」ポイントはスプライトの位置・サイズから自動生成
+// 敷物：床に敷くもの。種類で決まり、上を歩けて、ほかの家具やキャラより下に描かれる
+const FLOOR_ITEMS = new Set(['rug', 'carpet_red']);
 let furniture = [];
 let solids = [];
 let objectSpots = [];
@@ -173,7 +175,11 @@ function applyLayout() {
   const L = scenario.layout;
   const room = L.room || { w: 256, h: 176, wall: 48 };
   W = room.w; H = room.h; WALL = room.wall;
-  furniture = L.furniture;
+  // 家具にも表示条件（if）を付けられる。期間限定フラグと組み合わせると、
+  // お祝いの垂れ幕のような飾りが期間中だけ出て、過ぎたら勝手に消える
+  furniture = L.furniture.filter(f => checkCond(f.if));
+  // 敷物は必ずいちばん下に描く（あとから追加してもソファや机の上に乗ってしまわないように）
+  furniture = furniture.filter(f => FLOOR_ITEMS.has(f.n)).concat(furniture.filter(f => !FLOOR_ITEMS.has(f.n)));
   npcs = L.npcs.map(n => ({ ...n }));
   player.x = L.player.x;
   player.y = L.player.y;
@@ -183,7 +189,7 @@ function applyLayout() {
   for (const f of furniture) {
     const im = img[f.n];
     const bottom = f.y + im.height;
-    if (!f.walkable && bottom > WALL + 2) {
+    if (!f.walkable && !FLOOR_ITEMS.has(f.n) && bottom > WALL + 2) {
       // 足元だけ通れなくする（ポスター等、壁の上で完結するものは対象外）
       solids.push({ x: f.x + 1, y: bottom - 6, w: im.width - 2, h: 6 });
     }
@@ -212,6 +218,31 @@ const flags = {};            // シナリオのフラグ
   else if (h >= 18 && h <= 22) flags.time_evening = true;
   else flags.time_night = true;
 }
+// ---- 期間限定フラグ ----
+// 管理画面の「期間限定フラグ」で登録した期間中だけ立つフラグ（例: soldout）。
+// サーバーが日本時間で判定して「いま有効なもの」だけ返してくる。
+// 家具の表示条件にも使うので、これが届くまでは楽屋の配置を始めない（frame() 参照）。
+const PERIODS_API = 'https://admin.ginmakuichiro.net/data/backstage/periods.json';
+let periodsLoaded = false;
+let confettiOnStart = false;   // 有効な期間のどれかに「冒頭に紙吹雪」が付いている
+(function loadPeriods() {
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const finish = () => { clearTimeout(timer); periodsLoaded = true; };
+  // 取得に手間取っても楽屋に入れなくなるのは本末転倒なので、4秒で見切る
+  const timer = setTimeout(() => { if (ac) ac.abort(); periodsLoaded = true; }, 4000);
+  fetch(PERIODS_API, { cache: 'no-store', signal: ac ? ac.signal : undefined })
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      for (const pf of (d && d.flags) || []) {
+        if (!pf || !pf.flag) continue;
+        flags[pf.flag] = true;
+        if (pf.confetti) confettiOnStart = true;
+      }
+    })
+    .catch(() => { /* 取れなければ通常営業 */ })
+    .then(finish);
+})();
+
 const usedOnce = new Set();  // 一度きりのトピック消化記録 "speakerId:topicIdx"
 const talkCount = {};        // speakerId -> 話しかけた回数（ローテーション用）
 
@@ -479,8 +510,11 @@ function startIntro() {
   if (introT0 !== null) return;
   introT0 = Date.now();
   setTimeout(() => introEl.classList.add('go'), INTRO_HOLD_MS);
-  setTimeout(() => { introEl.classList.add('done'); introDone = true; },
-    INTRO_HOLD_MS + INTRO_MOSAIC_MS);
+  setTimeout(() => {
+    introEl.classList.add('done');
+    introDone = true;
+    if (confettiOnStart) startConfetti();   // お祝い期間中は、モザイクが解けた瞬間に紙吹雪
+  }, INTRO_HOLD_MS + INTRO_MOSAIC_MS);
 }
 
 // 描き終えた画面を一度小さく縮めてから拡大し直してモザイクにする（演出中の2秒だけ動く）
@@ -571,7 +605,77 @@ function drawRoom() {
     for (let y = 0; y < WALL; y += 16) ctx.drawImage(img.tile_wall, x, y);
     for (let y = WALL; y < H; y += 16) ctx.drawImage(img.tile_floor, x, y);
   }
-  for (const f of furniture) ctx.drawImage(img[f.n], f.x, f.y);
+  for (const f of furniture) {
+    ctx.drawImage(img[f.n], f.x, f.y);
+    if (f.text) drawFurnitureText(f);
+  }
+}
+
+// 家具に載せる文字（お祝いの絨毯など）。ドット絵に漢字を描き込むと潰れて読めないので、
+// 会話ウィンドウと同じく高解像度の文字をスプライトの中央に重ねる。
+// 1行ずつ描き、「#」で始まる行は大きな金文字になる。
+const FT_SMALL = { font: '7px "Hiragino Mincho ProN", "Yu Mincho", serif', h: 9, color: '#f4eddd' };
+const FT_LARGE = { font: 'bold 12px "Hiragino Mincho ProN", "Yu Mincho", serif', h: 14, color: '#f2d178' };
+function drawFurnitureText(f) {
+  const im = img[f.n];
+  const lines = (Array.isArray(f.text) ? f.text : String(f.text).split('\n'))
+    .map(l => String(l)).filter(l => l.trim() !== '')
+    .map(l => (l.startsWith('#') || l.startsWith('＃')) ? { s: l.slice(1).trim(), st: FT_LARGE } : { s: l, st: FT_SMALL });
+  if (!lines.length) return;
+  const total = lines.reduce((a, l) => a + l.st.h, 0);
+  let y = f.y + (im.height - total) / 2;
+  const cx = f.x + im.width / 2;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const l of lines) {
+    ctx.font = l.st.font;
+    const ty = y + l.st.h / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';           // 地の模様に埋もれないよう薄い影を敷く
+    ctx.fillText(l.s, cx + 0.5, ty + 0.5);
+    ctx.fillStyle = l.st.color;
+    ctx.fillText(l.s, cx, ty);
+    y += l.st.h;
+  }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ---- 紙吹雪 ----
+// 期間限定フラグで「冒頭に紙吹雪」が付いているときだけ、楽屋に入った瞬間に一度だけ舞う。
+// ずっと降らせると会話の邪魔になるので、7秒ほどで降り切って終わり。
+const CONFETTI_COLORS = ['#c0392b', '#e3b23c', '#f2d178', '#9ee1ff', '#f4eddd', '#ff8fb0'];
+let confetti = null;
+function startConfetti() {
+  confetti = [];
+  for (let i = 0; i < 110; i++) {
+    confetti.push({
+      x: Math.random() * VW,
+      y: -4 - Math.random() * VH * 1.1,      // 画面の上に縦に並べておき、時間差で降らせる
+      vy: 0.7 + Math.random() * 0.7,
+      sway: Math.random() * Math.PI * 2,
+      swaySp: 0.04 + Math.random() * 0.05,
+      amp: 0.3 + Math.random() * 0.6,
+      w: Math.random() < 0.5 ? 2 : 3,
+      c: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    });
+  }
+}
+function drawConfetti() {
+  if (!confetti) return;
+  let alive = 0;
+  for (const p of confetti) {
+    p.y += p.vy;
+    p.sway += p.swaySp;
+    p.x += Math.sin(p.sway) * p.amp;
+    if (p.y > VH + 4) continue;
+    alive++;
+    if (p.y < -4) continue;
+    ctx.fillStyle = p.c;
+    // 揺れの向きで幅を変えて、紙がひらひら裏返る感じを出す
+    const w = Math.abs(Math.cos(p.sway)) > 0.5 ? p.w : 1;
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), w, 2);
+  }
+  if (!alive) confetti = null;
 }
 
 function drawSprites() {
@@ -660,7 +764,7 @@ function drawBadge() {
 }
 
 function frame() {
-  if (loaded < total || !scenario) {
+  if (loaded < total || !scenario || !periodsLoaded) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, VW, VH);
     ctx.fillStyle = '#b8c2c8';
@@ -690,6 +794,7 @@ function frame() {
     drawSprites();
     ctx.restore();
     // UIはスクリーン座標で描画
+    drawConfetti();
     drawDialog();
     drawBadge();
     applyMosaic();

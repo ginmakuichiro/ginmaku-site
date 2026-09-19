@@ -21,6 +21,12 @@ export default {
     if (p === '/data/schedule.json') return publicSchedule(env);
     if (p === '/data/news.json') return publicNews(env);
     if (p === '/data/backstage/scenario.json') return publicBackstage(env, url);
+    // 期間限定フラグ。公開するのは「いま有効なフラグ名」だけで、予定やメモは出さない
+    // （解禁前の告知を登録しても外から読めないようにするため）
+    if (p === '/data/backstage/periods.json') {
+      return json({ flags: await activePeriodFlags(env) }, 200,
+        { 'access-control-allow-origin': '*', 'cache-control': 'no-cache' });
+    }
     // 写真アルバムの設定（枚数・キャプション・解放条件・画像）。ゲームから読む
     if (p === '/data/backstage/photos.json') {
       return json({ photos: await loadPhotos(env) }, 200, { 'access-control-allow-origin': '*' });
@@ -74,6 +80,11 @@ export default {
         await env.DATA.put(SCORES_KEY, JSON.stringify(list));
         return json({ scores: list });
       }
+      // 期間限定フラグの設定
+      if (p === '/api/backstage/periods' && req.method === 'GET') {
+        return json({ periods: await loadPeriods(env), today: todayJST() });
+      }
+      if (p === '/api/backstage/periods' && req.method === 'PUT') return savePeriods(req, env);
       // 写真アルバムの設定
       if (p === '/api/backstage/photos' && req.method === 'GET') {
         return json({ photos: await loadPhotos(env) });
@@ -351,6 +362,56 @@ async function hmac(env, data) {
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
   return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- 楽屋の期間限定フラグ ---------- */
+// 「○月○日〜○月○日のあいだだけ立つフラグ」。会話・家具・写真の表示条件に使う。
+// 例: soldout を 10/18 まで → お祝いのセリフや垂れ幕が期間中だけ出て、過ぎたら自動で消える
+
+const PERIODS_KEY = 'backstage:periods';
+const PERIODS_MAX = 20;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// 日付の境目は日本時間で切る（お客さんもメンバーも日本にいる前提）
+function todayJST() {
+  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+function cleanPeriod(p) {
+  const flag = String((p && p.flag) || '').trim().replace(/[^A-Za-z0-9_]/g, '').slice(0, 40);
+  const from = DATE_RE.test(String(p && p.from)) ? String(p.from) : '';
+  const to = DATE_RE.test(String(p && p.to)) ? String(p.to) : '';
+  return {
+    flag,
+    label: String((p && p.label) || '').slice(0, 60),
+    from, to,
+    confetti: !!(p && p.confetti),
+  };
+}
+
+async function loadPeriods(env) {
+  try {
+    const raw = JSON.parse((await env.DATA.get(PERIODS_KEY)) || '[]');
+    return Array.isArray(raw) ? raw.slice(0, PERIODS_MAX).map(cleanPeriod) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// 公開用：今日が期間内のものだけ。メモ（label）や日付は含めない
+async function activePeriodFlags(env) {
+  const today = todayJST();
+  return (await loadPeriods(env))
+    .filter(p => p.flag && (!p.from || p.from <= today) && (!p.to || today <= p.to))
+    .map(p => ({ flag: p.flag, confetti: p.confetti }));
+}
+
+async function savePeriods(req, env) {
+  const b = await req.json().catch(() => null);
+  if (!b || !Array.isArray(b.periods)) return json({ error: 'bad body' }, 400);
+  const clean = b.periods.slice(0, PERIODS_MAX).map(cleanPeriod).filter(p => p.flag);
+  await env.DATA.put(PERIODS_KEY, JSON.stringify(clean));
+  return json({ periods: clean, today: todayJST() });
 }
 
 /* ---------- 楽屋の写真アルバム ---------- */

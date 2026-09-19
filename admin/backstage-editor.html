@@ -58,11 +58,12 @@
   #content { flex: 1; padding: 16px 20px 60px; max-width: 760px; }
   .name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
   .name-row label { color: var(--dim); font-size: 12px; }
-  input[type=text], textarea {
+  input[type=text], input[type=date], textarea {
     background: var(--bg); color: var(--text); border: 1px solid var(--line);
     border-radius: 6px; padding: 6px 8px; font-size: 13px; font-family: inherit;
   }
-  input[type=text]:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input[type=text]:focus, input[type=date]:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input[type=date] { color-scheme: dark; }   /* カレンダーのアイコンも暗い配色に合わせる */
   .name-row input { flex: 1; font-size: 15px; }
   .topic {
     background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
@@ -214,6 +215,11 @@ function renderSidebar() {
   lb.textContent = '🗺 配置（アセットの場所）';
   lb.onclick = () => { currentType = 'layout'; renderSidebar(); renderContent(); };
   nav.appendChild(lb);
+  const tb = document.createElement('button');
+  tb.className = 'speaker-btn' + (currentType === 'periods' ? ' active' : '');
+  tb.textContent = '📅 期間限定フラグ';
+  tb.onclick = () => { currentType = 'periods'; renderSidebar(); renderContent(); };
+  nav.appendChild(tb);
   const pb = document.createElement('button');
   pb.className = 'speaker-btn' + (currentType === 'photos' ? ' active' : '');
   pb.textContent = '📷 写真アルバム';
@@ -324,6 +330,7 @@ function renderContent() {
   if (currentType === 'layout') { renderLayout(c); return; }
   if (currentType === 'ranking') { renderRanking(c); return; }
   if (currentType === 'photos') { renderPhotos(c); return; }
+  if (currentType === 'periods') { renderPeriods(c); return; }
   const speaker = data[currentType][currentId];
 
   // 名前
@@ -477,7 +484,9 @@ function renderContent() {
 // ---- 配置エディタ ----
 let GW = 256, GH = 176, GWALL = 48; // renderLayout時に data.layout.room から読み込む
 const SCALE = 3;
-const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook'];
+const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook','banner_soldout','carpet_red'];
+// 敷物：床に敷くもの。ゲームでは上を歩けて、ほかの家具やキャラより下に描かれる
+const FLOOR_ITEMS = new Set(['rug', 'carpet_red']);
 const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
 const PLACEABLE = ROOM_IMGS.filter(n => !n.startsWith('tile_'));
 const imgs = {};
@@ -525,6 +534,7 @@ function selLabel() {
 function drawLayout() {
   if (!lctx || !data || !data.layout) return;
   const g = lctx;
+  g.setTransform(SCALE, 0, 0, SCALE, 0, 0);   // 以降は部屋の座標（論理px）で描ける
   g.imageSmoothingEnabled = false;
   g.clearRect(0, 0, GW, GH);
   // 床と壁
@@ -533,11 +543,18 @@ function drawLayout() {
     for (let y = GWALL; y < GH; y += 16) g.drawImage(imgs.tile_floor, x, y);
   }
   const L = data.layout;
-  for (const f of L.furniture) {
+  // ゲームと同じ重なり順：敷物がいちばん下
+  const ordered = L.furniture.filter(f => FLOOR_ITEMS.has(f.n)).concat(L.furniture.filter(f => !FLOOR_ITEMS.has(f.n)));
+  for (const f of ordered) {
     g.drawImage(imgs[f.n], f.x, f.y);
+    if (f.text) drawFurnitureText(g, f);
     if (f.examine) { // 調べられる家具に水色マーカー
       g.fillStyle = '#9ee1ff';
       g.fillRect(f.x + Math.floor(imgs[f.n].width / 2) - 1, f.y - 3, 3, 2);
+    }
+    if (f.if) { // 表示条件つきの家具に金色マーカー（期間限定の飾りなど）
+      g.fillStyle = '#e3b23c';
+      g.fillRect(f.x, f.y - 3, 3, 2);
     }
   }
   const chars = [...L.npcs.map((n, i) => ({ ...n, _t: 'npc', _i: i })), { ...L.player, id: 'you', _t: 'player', _i: 0 }]
@@ -551,6 +568,33 @@ function drawLayout() {
     g.lineWidth = 1;
     g.strokeRect(it.x - 1.5, it.y - 1.5, im.width + 3, im.height + 3);
   }
+}
+
+// 家具に載せる文字。ゲーム側（game.js の drawFurnitureText）と同じ描き方にしてある
+const FT_SMALL = { font: '7px "Hiragino Mincho ProN", "Yu Mincho", serif', h: 9, color: '#f4eddd' };
+const FT_LARGE = { font: 'bold 12px "Hiragino Mincho ProN", "Yu Mincho", serif', h: 14, color: '#f2d178' };
+function drawFurnitureText(g, f) {
+  const im = imgs[f.n];
+  const lines = (Array.isArray(f.text) ? f.text : String(f.text).split('\n'))
+    .map(l => String(l)).filter(l => l.trim() !== '')
+    .map(l => (l.startsWith('#') || l.startsWith('＃')) ? { s: l.slice(1).trim(), st: FT_LARGE } : { s: l, st: FT_SMALL });
+  if (!lines.length) return;
+  const total = lines.reduce((a, l) => a + l.st.h, 0);
+  let y = f.y + (im.height - total) / 2;
+  const cx = f.x + im.width / 2;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (const l of lines) {
+    g.font = l.st.font;
+    const ty = y + l.st.h / 2;
+    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.fillText(l.s, cx + 0.5, ty + 0.5);
+    g.fillStyle = l.st.color;
+    g.fillText(l.s, cx, ty);
+    y += l.st.h;
+  }
+  g.textAlign = 'left';
+  g.textBaseline = 'alphabetic';
 }
 
 function canvasPos(e) {
@@ -569,10 +613,126 @@ function pickAt(x, y) {
   for (let i = L.npcs.length - 1; i >= 0; i--) {
     if (hit(L.npcs[i], imgs[L.npcs[i].id])) return { type: 'npc', idx: i };
   }
-  for (let i = L.furniture.length - 1; i >= 0; i--) {
-    if (hit(L.furniture[i], imgs[L.furniture[i].n])) return { type: 'furniture', idx: i };
+  for (const floorPass of [false, true]) {
+    for (let i = L.furniture.length - 1; i >= 0; i--) {
+      const f = L.furniture[i];
+      if (FLOOR_ITEMS.has(f.n) !== floorPass) continue;
+      if (hit(f, imgs[f.n])) return { type: 'furniture', idx: i };
+    }
   }
   return null;
+}
+
+// ---- 期間限定フラグ管理 ----
+// 「○日〜○日のあいだだけ立つフラグ」。会話の表示条件・家具の表示条件・写真の条件に書ける。
+let periodList = null;
+let periodToday = '';
+
+async function savePeriodList() {
+  const r = await fetch('/api/backstage/periods', {
+    method: 'PUT', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ periods: periodList }),
+  });
+  if (!r.ok) { setStatus('保存に失敗しました'); return; }
+  const d = await r.json();
+  periodList = d.periods || [];
+  periodToday = d.today || periodToday;
+  setStatus('期間限定フラグを保存しました（即時反映）', true);
+  renderContent();
+}
+
+function periodState(p) {
+  if (!p.flag) return { text: 'フラグ名が未入力', on: false };
+  if (p.from && periodToday < p.from) return { text: `開始前（${p.from} から）`, on: false };
+  if (p.to && periodToday > p.to) return { text: `終了済み（${p.to} まで）`, on: false };
+  return { text: 'いま有効', on: true };
+}
+
+function renderPeriods(c) {
+  if (!periodList) {
+    const l = document.createElement('div');
+    l.textContent = '読み込み中…';
+    c.appendChild(l);
+    fetch('/api/backstage/periods').then(r => r.json())
+      .then(d => { periodList = d.periods || []; periodToday = d.today || ''; renderContent(); })
+      .catch(() => { l.textContent = '読み込みに失敗しました。'; });
+    return;
+  }
+
+  periodList.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'topic';
+    const head = document.createElement('div');
+    head.className = 'topic-head';
+    const idx = document.createElement('span');
+    idx.className = 'idx';
+    const st = periodState(p);
+    idx.textContent = (p.label || p.flag || `期間 ${i + 1}`) + '　';
+    const badge = document.createElement('span');
+    badge.textContent = st.text;
+    badge.style.cssText = 'font-size:11px;font-weight:normal;color:' + (st.on ? '#8affa0' : 'var(--dim)');
+    idx.appendChild(badge);
+    head.appendChild(idx);
+    head.appendChild(mk('削除', () => {
+      if (!confirm('この期間を削除しますか？')) return;
+      periodList.splice(i, 1); renderContent();
+    }, 'danger'));
+    card.appendChild(head);
+
+    const row = document.createElement('div');
+    row.className = 'cond-row';
+    const flagIn = document.createElement('input');
+    flagIn.type = 'text'; flagIn.placeholder = '例: soldout（半角英数と _）';
+    flagIn.value = p.flag || '';
+    flagIn.oninput = () => { p.flag = flagIn.value.replace(/[^A-Za-z0-9_]/g, ''); };
+    row.appendChild(field('フラグ名（表示条件に書く名前）', flagIn));
+    const labelIn = document.createElement('input');
+    labelIn.type = 'text'; labelIn.placeholder = '例: 10/18ワンマン ソールドアウト';
+    labelIn.value = p.label || '';
+    labelIn.oninput = () => { p.label = labelIn.value; };
+    row.appendChild(field('メモ（管理用。お客さんには見えません）', labelIn));
+    card.appendChild(row);
+
+    const row2 = document.createElement('div');
+    row2.className = 'cond-row';
+    const fromIn = document.createElement('input');
+    fromIn.type = 'date'; fromIn.value = p.from || '';
+    fromIn.oninput = () => { p.from = fromIn.value; };
+    row2.appendChild(field('開始日（空欄=いますぐ）', fromIn));
+    const toIn = document.createElement('input');
+    toIn.type = 'date'; toIn.value = p.to || '';
+    toIn.oninput = () => { p.to = toIn.value; };
+    row2.appendChild(field('終了日（この日の終わりまで。空欄=ずっと）', toIn));
+    const cfLabel = document.createElement('label');
+    cfLabel.className = 'once-label';
+    const cfCb = document.createElement('input');
+    cfCb.type = 'checkbox'; cfCb.checked = !!p.confetti;
+    cfCb.onchange = () => { p.confetti = cfCb.checked; };
+    cfLabel.append(cfCb, '楽屋に入った瞬間に紙吹雪');
+    row2.appendChild(cfLabel);
+    card.appendChild(row2);
+
+    c.appendChild(card);
+  });
+
+  const bar = document.createElement('div');
+  bar.className = 'ev-row';
+  bar.appendChild(mk('+ 期間を追加', () => {
+    periodList.push({ flag: '', label: '', from: '', to: '', confetti: false });
+    renderContent();
+  }));
+  bar.appendChild(mk('保存して反映', () => savePeriodList(), 'primary'));
+  c.appendChild(bar);
+
+  const note = document.createElement('div');
+  note.className = 'hint';
+  note.innerHTML = '指定した期間のあいだだけ、ゲーム内でフラグが立ちます。<b>保存すると即座に反映</b>されます。'
+    + '<br>・<b>会話</b>の「表示条件」にフラグ名を書く → 期間中だけそのセリフが出る'
+    + '<br>・<b>配置</b>で家具の「表示条件」に書く → 期間中だけ飾りが置かれ、過ぎたら自動で消える'
+    + '<br>・<b>写真アルバム</b>の条件で選ぶ → 期間中に来た人だけが見られる写真になる'
+    + '<br>日付は日本時間で切り替わります。お客さんに伝わるのは「いま有効なフラグ名」だけで、'
+    + '開始前の予定やメモは外から見えません（解禁前の告知を先に仕込んでおけます）。';
+  c.appendChild(note);
 }
 
 // ---- 写真アルバム管理 ----
@@ -586,6 +746,13 @@ const PHOTO_FLAGS = [
   { flag: 'galaxy_allclear', label: 'ゲームを1周クリア' },
 ];
 const PHOTO_MAX = 30;
+// 定型の条件 + 登録済みの期間限定フラグ
+function photoFlagOptions() {
+  const extra = (periodList || [])
+    .filter(p => p.flag && !PHOTO_FLAGS.some(f => f.flag === p.flag))
+    .map(p => ({ flag: p.flag, label: '期間限定: ' + (p.label || p.flag) }));
+  return PHOTO_FLAGS.concat(extra);
+}
 let photoList = null;
 
 async function savePhotoList(msg) {
@@ -606,6 +773,12 @@ function renderPhotos(c) {
       .then(d => { photoList = d.photos || []; renderContent(); })
       .catch(() => { l.textContent = '読み込みに失敗しました。'; });
     return;
+  }
+
+  if (periodList === null) {
+    fetch('/api/backstage/periods').then(r => r.json())
+      .then(d => { periodList = d.periods || []; periodToday = d.today || ''; if (currentType === 'photos') renderContent(); })
+      .catch(() => { periodList = []; });
   }
 
   photoList.forEach((p, i) => {
@@ -679,7 +852,7 @@ function renderPhotos(c) {
     row.className = 'cond-row';
     const sel = document.createElement('select');
     let known = false;
-    PHOTO_FLAGS.forEach(f => {
+    photoFlagOptions().forEach(f => {
       const o = document.createElement('option');
       o.value = f.flag; o.textContent = f.label;
       sel.appendChild(o);
@@ -691,11 +864,11 @@ function renderPhotos(c) {
     // 「その他」を選んだことは p._other に覚えておく。現在のフラグが定型リストに
     // ある場合（「条件なし」= 空文字も含む）、これが無いと再描画で選択が元に戻ってしまう。
     // _other は画面の中だけの印で、保存時にサーバー側が捨てるのでデータには残らない
-    if (p._other === undefined) p._other = !known;
-    sel.value = p._other ? '__other__' : (p.flag || '');
+    const useOther = p._other === true || !known;
+    sel.value = useOther ? '__other__' : (p.flag || '');
     sel.onchange = () => {
       if (sel.value === '__other__') { p._other = true; }
-      else { p._other = false; p.flag = sel.value; }
+      else { delete p._other; p.flag = sel.value; }
       renderContent();
     };
     row.appendChild(field('見られるようになる条件', sel));
@@ -826,7 +999,7 @@ function renderLayout(c) {
   wrap.id = 'layoutWrap';
   const cv = document.createElement('canvas');
   cv.id = 'layoutCanvas';
-  cv.width = GW; cv.height = GH;
+  cv.width = GW * SCALE; cv.height = GH * SCALE;   // ゲームと同じ3倍解像度（文字をくっきり描くため）
   cv.style.width = (GW * SCALE) + 'px';
   lctx = cv.getContext('2d');
   wrap.appendChild(cv);
@@ -845,7 +1018,7 @@ function renderLayout(c) {
       inp.value = v;
       room[key] = v;
       GW = room.w; GH = room.h; GWALL = room.wall;
-      cv.width = GW; cv.height = GH;
+      cv.width = GW * SCALE; cv.height = GH * SCALE;
       cv.style.width = (GW * SCALE) + 'px';
       lctx.imageSmoothingEnabled = false;
       drawLayout();
@@ -877,7 +1050,37 @@ function renderLayout(c) {
   const exCb = document.createElement('input');
   exCb.type = 'checkbox';
   exLabel.append(exCb, '調べられる');
-  panel.append(nameEl, 'X:', xIn, 'Y:', yIn, exLabel, dupBtn, delBtn);
+  // 表示条件：フラグが立っているときだけ置かれる家具にできる（期間限定の飾りなど）
+  const ifLabel = document.createElement('label');
+  ifLabel.className = 'once-label';
+  const ifIn = document.createElement('input');
+  ifIn.type = 'text';
+  ifIn.placeholder = '例: soldout（空欄=いつも）';
+  ifIn.style.width = '170px';
+  ifLabel.append('表示条件:', ifIn);
+  ifIn.oninput = () => {
+    const it = selItem();
+    if (!it || lsel.type !== 'furniture') return;
+    if (ifIn.value.trim()) it.if = ifIn.value.trim(); else delete it.if;
+    drawLayout();
+  };
+  // 家具に載せる文字（お祝いの絨毯など）
+  const txLabel = document.createElement('label');
+  txLabel.className = 'once-label';
+  txLabel.style.alignItems = 'flex-start';
+  const txIn = document.createElement('textarea');
+  txIn.rows = 2;
+  txIn.placeholder = '家具に載せる文字（1行ずつ。# で始めると大きな金文字）';
+  txIn.style.cssText = 'width:330px;min-height:44px;';
+  txLabel.append('文字:', txIn);
+  txIn.oninput = () => {
+    const it = selItem();
+    if (!it || lsel.type !== 'furniture') return;
+    const lines = txIn.value.split('\n').filter(l => l.trim() !== '');
+    if (lines.length) it.text = lines; else delete it.text;
+    drawLayout();
+  };
+  panel.append(nameEl, 'X:', xIn, 'Y:', yIn, exLabel, ifLabel, dupBtn, delBtn, txLabel);
 
   exCb.onchange = () => {
     const it = selItem();
@@ -920,6 +1123,8 @@ function renderLayout(c) {
   hint.innerHTML = `<b>配置の編集</b><br>
     ・スプライトをドラッグで移動。クリックで選択して座標を数値指定もできます。<br>
     ・<b>調べられる</b>をオンにすると水色マーカーが付き、ゲーム内で「?」が出て調べられます。セリフは左の「調べられる家具」から編集（同じ種類の家具はセリフを共有）。<br>
+    ・<b>文字</b>を入れると家具の中央に重ねて表示されます（絨毯 carpet_red 向け）。1行ずつ書き、<b>#</b> で始めた行は大きな金文字になります。絨毯やラグは上を歩けて、ほかの家具より下に敷かれます。<br>
+    ・<b>表示条件</b>にフラグ名を書くと、そのフラグが立っている間だけ置かれます（金色マーカー）。「期間限定フラグ」と組み合わせると、飾りが期間中だけ出て自動で消えます。<br>
     ・家具の当たり判定と「調べる」ポイントは位置から自動で付きます。「ラグ」は上を歩けます。ポスター類は壁の中に収まっていれば通行の邪魔になりません。<br>
     ・変更は<b>下書き保存</b>で保存し、<b>公開</b>で全訪問者に反映されます。`;
 
@@ -930,8 +1135,13 @@ function renderLayout(c) {
     yIn.value = it ? Math.round(it.y) : '';
     xIn.disabled = yIn.disabled = !it;
     const isFurn = lsel && lsel.type === 'furniture';
-    delBtn.style.display = dupBtn.style.display = exLabel.style.display = isFurn ? '' : 'none';
-    if (isFurn) exCb.checked = !!selItem().examine;
+    delBtn.style.display = dupBtn.style.display = exLabel.style.display = ifLabel.style.display = txLabel.style.display = isFurn ? '' : 'none';
+    if (isFurn) {
+      const f = selItem();
+      exCb.checked = !!f.examine;
+      ifIn.value = f.if || '';
+      txIn.value = Array.isArray(f.text) ? f.text.join('\n') : (f.text || '');
+    }
   }
   xIn.oninput = () => { const it = selItem(); if (it) { it.x = +xIn.value || 0; drawLayout(); } };
   yIn.oninput = () => { const it = selItem(); if (it) { it.y = +yIn.value || 0; drawLayout(); } };

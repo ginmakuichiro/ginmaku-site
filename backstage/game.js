@@ -25,7 +25,7 @@ function cameraPos() {
 
 // ---- アセット読み込み ----
 // ASSET_VER: ドット絵を差し替えたら日付を更新する（ブラウザキャッシュ対策）
-const ASSET_VER = '20260726';
+const ASSET_VER = '20260919';
 const ROOM_IMGS = ['tile_floor','tile_wall','door','sofa','tv','arcade','fridge','mirror','rack','poster_a','poster_b','setlist','table','amp','rug','desk','laptop','photobook','banner_soldout','carpet_red'];
 const MEMBER_IMGS = ['ginmaku','kenta','takashi','ayako','saeko','you'];
 const img = {};
@@ -34,8 +34,13 @@ function load(name, src) {
   const im = new Image();
   im.src = `${src}?v=${ASSET_VER}`;
   im.onload = () => { loaded++; };
+  // 1枚読めないだけで楽屋に入れなくなる（黒画面のまま止まる）のを防ぐ。
+  // 読めなかった画像は usable() で弾いて、その家具だけ描かずに進む
+  im.onerror = () => { loaded++; };
   img[name] = im;
 }
+// 画像が存在して、正常に読み込めているか（未登録のアセット名や読み込み失敗を弾く）
+const usable = name => !!(img[name] && img[name].naturalWidth);
 ROOM_IMGS.forEach(n => load(n, `assets/room/${n}.png`));
 MEMBER_IMGS.forEach(n => load(n, `assets/member/${n}.png`));
 
@@ -177,10 +182,10 @@ function applyLayout() {
   W = room.w; H = room.h; WALL = room.wall;
   // 家具にも表示条件（if）を付けられる。期間限定フラグと組み合わせると、
   // お祝いの垂れ幕のような飾りが期間中だけ出て、過ぎたら勝手に消える
-  furniture = L.furniture.filter(f => checkCond(f.if));
+  furniture = L.furniture.filter(f => checkCond(f.if) && usable(f.n));
   // 敷物は必ずいちばん下に描く（あとから追加してもソファや机の上に乗ってしまわないように）
   furniture = furniture.filter(f => FLOOR_ITEMS.has(f.n)).concat(furniture.filter(f => !FLOOR_ITEMS.has(f.n)));
-  npcs = L.npcs.map(n => ({ ...n }));
+  npcs = L.npcs.filter(n => usable(n.id)).map(n => ({ ...n }));
   player.x = L.player.x;
   player.y = L.player.y;
 
@@ -602,8 +607,8 @@ function update() {
 // ---- 描画 ----
 function drawRoom() {
   for (let x = 0; x < W; x += 16) {
-    for (let y = 0; y < WALL; y += 16) ctx.drawImage(img.tile_wall, x, y);
-    for (let y = WALL; y < H; y += 16) ctx.drawImage(img.tile_floor, x, y);
+    for (let y = 0; y < WALL; y += 16) if (usable('tile_wall')) ctx.drawImage(img.tile_wall, x, y);
+    for (let y = WALL; y < H; y += 16) if (usable('tile_floor')) ctx.drawImage(img.tile_floor, x, y);
   }
   for (const f of furniture) {
     ctx.drawImage(img[f.n], f.x, f.y);
@@ -680,7 +685,7 @@ function drawConfetti() {
 
 function drawSprites() {
   const all = [...npcs, player].sort((a, b) => a.y - b.y);
-  for (const s of all) ctx.drawImage(img[s.id], Math.round(s.x), Math.round(s.y));
+  for (const s of all) if (usable(s.id)) ctx.drawImage(img[s.id], Math.round(s.x), Math.round(s.y));
   if (!dialog.active) {
     const npc = nearestNpc();
     if (npc) {

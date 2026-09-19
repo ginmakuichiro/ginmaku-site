@@ -492,7 +492,7 @@ const PLACEABLE = ROOM_IMGS.filter(n => !n.startsWith('tile_'));
 const imgs = {};
 let imgsLoaded = 0;
 const imgsTotal = ROOM_IMGS.length + MEMBER_IMGS.length;
-const ASSET_VER = '20260726'; // ドット絵差し替え時に更新
+const ASSET_VER = '20260919'; // ドット絵差し替え時に更新
 for (const n of ROOM_IMGS) {
   const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}room/${n}.png?v=${ASSET_VER}`;
   im.onload = () => { imgsLoaded++; drawLayout(); };
@@ -546,6 +546,10 @@ function drawLayout() {
   // ゲームと同じ重なり順：敷物がいちばん下
   const ordered = L.furniture.filter(f => FLOOR_ITEMS.has(f.n)).concat(L.furniture.filter(f => !FLOOR_ITEMS.has(f.n)));
   for (const f of ordered) {
+    if (!imgs[f.n] || !imgs[f.n].naturalWidth) {   // 画像が読めない家具で画面全体が止まらないように
+      g.fillStyle = 'rgba(255,0,0,0.5)'; g.fillRect(f.x, f.y, 12, 12);
+      continue;
+    }
     g.drawImage(imgs[f.n], f.x, f.y);
     if (f.text) drawFurnitureText(g, f);
     if (f.examine) { // 調べられる家具に水色マーカー

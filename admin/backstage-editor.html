@@ -493,7 +493,7 @@ const PLACEABLE = ROOM_IMGS.filter(n => !n.startsWith('tile_'));
 const imgs = {};
 let imgsLoaded = 0;
 const imgsTotal = ROOM_IMGS.length + MEMBER_IMGS.length;
-const ASSET_VER = '20260919'; // ドット絵差し替え時に更新
+const ASSET_VER = '20260920'; // ドット絵差し替え時に更新
 for (const n of ROOM_IMGS) {
   const im = new Image(); im.crossOrigin = 'anonymous'; im.src = `${ASSET_BASE}room/${n}.png?v=${ASSET_VER}`;
   im.onload = () => { imgsLoaded++; drawLayout(); };

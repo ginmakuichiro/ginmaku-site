@@ -249,7 +249,8 @@ let confettiOnStart = false;   // 有効な期間のどれかに「冒頭に紙�
 })();
 
 const usedOnce = new Set();  // 一度きりのトピック消化記録 "speakerId:topicIdx"
-const talkCount = {};        // speakerId -> 話しかけた回数（ローテーション用）
+const talkCount = {};        // speakerId -> 話しかけた回数（全員と話した判定用）
+const spokenCount = {};      // "speakerId:topicIdx" -> この訪問でその会話を話した回数（順番決め用）
 
 // ---- 会話状態 ----
 const dialog = {
@@ -318,22 +319,24 @@ function inDateRange(t) {
   return true;
 }
 
-// 話しかけ/調べた時のトピック選択：
-// 「一度だけ」のトピック（イベント）が最優先。
-// それ以外は条件を満たすもの全部を、話しかけるたびに上から順にローテーション
+// 話しかけ/調べた時のトピック選択：管理画面の並び順がそのまま話す順。
+// 条件を満たす会話のうち「この訪問で話した回数がいちばん少ないもの」を、上にあるものから選ぶ。
+// ・最初は一番上。以降は上から順に進み、一巡したら先頭へ戻る（途中で飛ばさない）
+// ・「一度だけ」は話したら外れる。先に話させたいなら上に置く（特別扱いはしない）
+// ・途中でフラグが立って新しく条件を満たした会話は、未読なので次に回ってくる
+// 以前は「一度だけ」を最優先にし、残りを話しかけ回数で回していたため、
+// 一番上に置いた会話が「一度だけ」に先を越されたうえ一巡後まで飛ばされていた。
 function pickTopic(speakerId, topics) {
-  const eligible = [];
+  let best = null;
   topics.forEach((t, i) => {
-    if (t.once && usedOnce.has(`${speakerId}:${i}`)) return;
+    const key = `${speakerId}:${i}`;
+    if (t.once && usedOnce.has(key)) return;
     if (!checkCond(t.if)) return;
     if (!inDateRange(t)) return;
-    eligible.push({ t, i });
+    const n = spokenCount[key] || 0;
+    if (!best || n < best.n) best = { t, i, n };
   });
-  if (!eligible.length) return null;
-  const onceTopic = eligible.find(e => e.t.once);
-  if (onceTopic) return onceTopic;
-  const count = talkCount[speakerId] || 0;
-  return eligible[count % eligible.length];
+  return best;
 }
 
 // ---- イベント ----
@@ -375,6 +378,7 @@ function startDialog(speakerId, data, isObject) {
   if (!picked) return;
   const { t, i } = picked;
   if (t.once) usedOnce.add(`${speakerId}:${i}`);
+  spokenCount[`${speakerId}:${i}`] = (spokenCount[`${speakerId}:${i}`] || 0) + 1;
   talkCount[speakerId] = (talkCount[speakerId] || 0) + 1;
   updateMetAll();
   dialog.active = true;

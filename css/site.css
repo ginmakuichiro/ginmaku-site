@@ -135,6 +135,7 @@ section{padding-top:64px}
   font-size:1.5rem;font-weight:800;letter-spacing:.12em;
 }
 .sec-head .jp{font-size:.72rem;color:var(--ink-soft);letter-spacing:.3em}
+.sec-note{font-size:.78rem;color:var(--ink-soft);margin:10px 0 2px;line-height:1.6}
 .sec-more{margin-left:auto;font-size:.75rem;letter-spacing:.15em}
 .sec-more a{color:var(--curtain);text-decoration:none;font-weight:700}
 .sec-more a:hover{text-decoration:underline}
